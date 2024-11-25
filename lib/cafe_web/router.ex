@@ -17,7 +17,7 @@ defmodule CafeWeb.Router do
   scope "/", CafeWeb do
     pipe_through :browser
 
-    get "/", PageController, :home
+    live "/:name", RoomLive, :index
   end
 
   # Other scopes may use custom stacks.

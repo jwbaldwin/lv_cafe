@@ -1,11 +1,11 @@
-defmodule CafeWeb.ChannelChannelTest do
+defmodule CafeWeb.RoomChannelTest do
   use CafeWeb.ChannelCase
 
   setup do
     {:ok, _, socket} =
       CafeWeb.UserSocket
       |> socket("user_id", %{some: :assign})
-      |> subscribe_and_join(CafeWeb.ChannelChannel, "channel:lobby")
+      |> subscribe_and_join(CafeWeb.RoomChannel, "room:lobby")
 
     %{socket: socket}
   end
@@ -15,7 +15,7 @@ defmodule CafeWeb.ChannelChannelTest do
     assert_reply ref, :ok, %{"hello" => "there"}
   end
 
-  test "shout broadcasts to channel:lobby", %{socket: socket} do
+  test "shout broadcasts to room:lobby", %{socket: socket} do
     push(socket, "shout", %{"hello" => "all"})
     assert_broadcast "shout", %{"hello" => "all"}
   end

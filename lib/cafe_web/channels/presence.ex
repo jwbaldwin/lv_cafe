@@ -14,17 +14,21 @@ defmodule CafeWeb.Presence do
     {:ok, %{}}
   end
 
+  def fetch(_topic, presences) do
+    for {key, %{metas: [meta | metas]}} <- presences, into: %{} do
+      # user can be populated here from the database here we populate
+      # the name for demonstration purposes
+      {key, %{metas: [meta | metas], id: meta.id, user: %{name: meta.id}}}
+    end
+  end
+
   def handle_metas(topic, %{joins: joins, leaves: leaves}, presences, state) do
-    # fetch existing presence information for the joined users and broadcast the
-    # event to all subscribers
     for {user_id, presence} <- joins do
-      user_data = %{user: presence.user, metas: Map.fetch!(presences, user_id)}
-      msg = {Cafe.PresenceClient, {:join, user_data}}
-      Phoenix.PubSub.local_broadcast(Cafe.PubSub, topic, msg)
+      user_data = %{id: user_id, user: presence.user, metas: Map.fetch!(presences, user_id)}
+      msg = {__MODULE__, {:join, user_data}}
+      Phoenix.PubSub.local_broadcast(Cafe.PubSub, "proxy:#{topic}", msg)
     end
 
-    # fetch existing presence information for the left users and broadcast the
-    # event to all subscribers
     for {user_id, presence} <- leaves do
       metas =
         case Map.fetch(presences, user_id) do
@@ -32,11 +36,18 @@ defmodule CafeWeb.Presence do
           :error -> []
         end
 
-      user_data = %{user: presence.user, metas: metas}
-      msg = {Cafe.PresenceClient, {:leave, user_data}}
-      Phoenix.PubSub.local_broadcast(Cafe.PubSub, topic, msg)
+      user_data = %{id: user_id, user: presence.user, metas: metas}
+      msg = {__MODULE__, {:leave, user_data}}
+      Phoenix.PubSub.local_broadcast(Cafe.PubSub, "proxy:#{topic}", msg)
     end
 
     {:ok, state}
   end
+
+  def list_online_users(),
+    do: list("online_users") |> Enum.map(fn {_id, presence} -> presence end)
+
+  def track_user(name, params), do: track(self(), "online_users", name, params)
+
+  def subscribe(), do: Phoenix.PubSub.subscribe(Cafe.PubSub, "proxy:online_users")
 end
