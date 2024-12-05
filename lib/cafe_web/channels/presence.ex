@@ -47,7 +47,9 @@ defmodule CafeWeb.Presence do
   def list_online_users(),
     do: list("online_users") |> Enum.map(fn {_id, presence} -> presence end)
 
-  def track_user(name, params), do: track(self(), "online_users", name, params)
+  def track_user(name, params) do
+    track(self(), "online_users", name, params)
+  end
 
   def subscribe(), do: Phoenix.PubSub.subscribe(Cafe.PubSub, "proxy:online_users")
 end

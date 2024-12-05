@@ -7,7 +7,7 @@ defmodule CafeWeb.PlayerControlsComponent do
 
   def render(assigns) do
     ~H"""
-    <div class="relative block width-full z-10">
+    <div class="relative block width-full z-[2]">
       <%= if @playing do %>
         <button phx-click="pause" phx-target={@myself} class="px-4 py-2 bg-white rounded">
           Pause
@@ -28,6 +28,7 @@ defmodule CafeWeb.PlayerControlsComponent do
   end
 
   def handle_event("play", _params, socket) do
+    IO.inspect("playing")
     {:noreply, push_event(socket, "playVideo", %{}) |> assign(:playing, true)}
   end
 

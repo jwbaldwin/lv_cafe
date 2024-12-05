@@ -2,14 +2,14 @@ defmodule CafeWeb.RoomStats do
   use CafeWeb, :live_component
 
   def mount(socket) do
-    socket = assign(socket, :presences, [])
+    socket = assign(socket, :presences, 0)
 
     socket =
       if connected?(socket) do
         session_id = Ecto.UUID.generate()
         CafeWeb.Presence.track_user(session_id, %{id: session_id})
-
         CafeWeb.Presence.subscribe()
+        IO.inspect(CafeWeb.Presence.list_online_users())
         assign(socket, :presences, length(CafeWeb.Presence.list_online_users()))
       else
         socket
@@ -20,7 +20,7 @@ defmodule CafeWeb.RoomStats do
 
   def render(assigns) do
     ~H"""
-    <div><%= @presences %></div>
+    <div class="text-white width-full block relative z-[2]">{@presences} people vibing</div>
     """
   end
 
