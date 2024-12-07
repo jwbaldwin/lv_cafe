@@ -3,3 +3,6 @@
 @import "tailwindcss/utilities";
 
 /* This file is for your main application CSS */
+@keyframes blink {
+  0%, 49% { opacity: 1; }
+  50%, 100% { opacity: 0; }}

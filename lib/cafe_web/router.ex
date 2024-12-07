@@ -1,6 +1,13 @@
 defmodule CafeWeb.Router do
   use CafeWeb, :router
 
+  def assign_client_id(conn, _opts) do
+    case get_session(conn, :session_id) do
+      nil -> put_session(conn, :session_id, Ecto.UUID.generate())
+      _client_id -> conn
+    end
+  end
+
   pipeline :browser do
     plug :accepts, ["html"]
     plug :fetch_session
@@ -8,6 +15,7 @@ defmodule CafeWeb.Router do
     plug :put_root_layout, html: {CafeWeb.Layouts, :root}
     plug :protect_from_forgery
     plug :put_secure_browser_headers
+    plug :assign_client_id
   end
 
   pipeline :api do
