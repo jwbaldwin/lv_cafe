@@ -14,67 +14,87 @@
   <body>
   <div class="flex flex-col items-stretch justify-between fixed inset-0 overflow-hidden p-12">
   <div class="main-snow">
-	<div class="initial-snow">
-		<div class="snow">&#10052;</div>
-		<div class="snow">&#10052;</div>
-		<div class="snow">&#10052;</div>
-		<div class="snow">&#10052;</div>
-		<div class="snow">&#10052;</div>
-		<div class="snow">&#10052;</div>
-		<div class="snow">&#10052;</div>
-		<div class="snow">&#10052;</div>
-		<div class="snow">&#10052;</div>
-		<div class="snow">&#10052;</div>
-		<div class="snow">&#10052;</div>
-		<div class="snow">&#10052;</div>
-		<div class="snow">&#10052;</div>
-		<div class="snow">&#10052;</div>
-		<div class="snow">&#10052;</div>
-		<div class="snow">&#10052;</div>
-		<div class="snow">&#10052;</div>
-		<div class="snow">&#10052;</div>
-		<div class="snow">&#10052;</div>
-		<div class="snow">&#10052;</div>
-		<div class="snow">&#10052;</div>
-		<div class="snow">&#10052;</div>
-		<div class="snow">&#10052;</div>
-		<div class="snow">&#10052;</div>
-		<div class="snow">&#10052;</div>
-		<div class="snow">&#10052;</div>
-		<div class="snow">&#10052;</div>
-		<div class="snow">&#10052;</div>
-		<div class="snow">&#10052;</div>
-		<div class="snow">&#10052;</div>
-		<div class="snow">&#10052;</div>
-		<div class="snow">&#10052;</div>
-		<div class="snow">&#10052;</div>
-		<div class="snow">&#10052;</div>
-		<div class="snow">&#10052;</div>
-		<div class="snow">&#10052;</div>
-		<div class="snow">&#10052;</div>
-		<div class="snow">&#10052;</div>
-		<div class="snow">&#10052;</div>
-		<div class="snow">&#10052;</div>
-		<div class="snow">&#10052;</div>
-		<div class="snow">&#10052;</div>
-		<div class="snow">&#10052;</div>
-		<div class="snow">&#10052;</div>
-		<div class="snow">&#10052;</div>
-		<div class="snow">&#10052;</div>
-		<div class="snow">&#10052;</div>
-		<div class="snow">&#10052;</div>
-		<div class="snow">&#10052;</div>
-		<div class="snow">&#10052;</div>
-	</div>
-	</div>
+    <div class="initial-snow">
+      <div class="snow">&#10052;</div>
+      <div class="snow">&#10052;</div>
+      <div class="snow">&#10052;</div>
+      <div class="snow">&#10052;</div>
+      <div class="snow">&#10052;</div>
+      <div class="snow">&#10052;</div>
+      <div class="snow">&#10052;</div>
+      <div class="snow">&#10052;</div>
+      <div class="snow">&#10052;</div>
+      <div class="snow">&#10052;</div>
+      <div class="snow">&#10052;</div>
+      <div class="snow">&#10052;</div>
+      <div class="snow">&#10052;</div>
+      <div class="snow">&#10052;</div>
+      <div class="snow">&#10052;</div>
+      <div class="snow">&#10052;</div>
+      <div class="snow">&#10052;</div>
+      <div class="snow">&#10052;</div>
+      <div class="snow">&#10052;</div>
+      <div class="snow">&#10052;</div>
+      <div class="snow">&#10052;</div>
+      <div class="snow">&#10052;</div>
+      <div class="snow">&#10052;</div>
+      <div class="snow">&#10052;</div>
+      <div class="snow">&#10052;</div>
+      <div class="snow">&#10052;</div>
+      <div class="snow">&#10052;</div>
+      <div class="snow">&#10052;</div>
+      <div class="snow">&#10052;</div>
+      <div class="snow">&#10052;</div>
+      <div class="snow">&#10052;</div>
+      <div class="snow">&#10052;</div>
+      <div class="snow">&#10052;</div>
+      <div class="snow">&#10052;</div>
+      <div class="snow">&#10052;</div>
+      <div class="snow">&#10052;</div>
+      <div class="snow">&#10052;</div>
+      <div class="snow">&#10052;</div>
+      <div class="snow">&#10052;</div>
+      <div class="snow">&#10052;</div>
+      <div class="snow">&#10052;</div>
+      <div class="snow">&#10052;</div>
+      <div class="snow">&#10052;</div>
+      <div class="snow">&#10052;</div>
+      <div class="snow">&#10052;</div>
+      <div class="snow">&#10052;</div>
+      <div class="snow">&#10052;</div>
+      <div class="snow">&#10052;</div>
+      <div class="snow">&#10052;</div>
+      <div class="snow">&#10052;</div>
+      </div>
+    </div>
     <div id="crt-lines"></div>
     <div id="shading"></div>
-    <div id="darken"></div>
+    <div id="main">
     <%= @inner_content %>
+    </div>
+    <div id="darken"></div>
     </div>
   </body>
 </html>
 <style>
+
+#main {
+  position: absolute;
+  z-index: 3;
+}
+
+.main-snow {
+	z-index: 12;
+	position: absolute;
+	top: 0;
+	left: 0;
+	width: 100%;
+	height: 100%;
+	opacity: 0;
+	animation: main-loadup 1s forwards linear, main-loadup-bg 10s forwards linear;
+	animation-delay: 0s, 0s;
+  pointer-events: none;
+}
 
 @keyframes scrollCrtLines {
   100% {
@@ -633,18 +653,6 @@
 	left: 100vw;
 	animation: snowfall 19s linear infinite;
 	animation-delay: -9s;
-}
-
-.main-snow {
-	z-index: 13;
-	position: absolute;
-	top: 0;
-	left: 0;
-	width: 100%;
-	height: 100%;
-	opacity: 0;
-	animation: main-loadup 1s forwards linear, main-loadup-bg 10s forwards linear;
-	animation-delay: 7s, 8s;
 }
 
 @keyframes main-loadup {
