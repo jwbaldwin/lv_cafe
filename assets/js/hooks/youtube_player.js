@@ -16,6 +16,10 @@ const YouTubePlayer = {
       this.initPlayer();
     }
 
+    this.handleEvent("changeVideo", ({ video_id }) => {
+      this.player.loadVideoById(video_id);
+    });
+
     this.handleEvent("playVideo", () => {
       if (this.player) this.player.playVideo();
     });
@@ -25,31 +29,34 @@ const YouTubePlayer = {
     });
 
     this.handleEvent("incVolume", () => {
-      console.log(this.player.getVolume());
-      if (this.player) this.player.setVolume(this.player.getVolume() + 10);
+      if (this.player) {
+        this.player.unMute();
+        this.player.setVolume(this.player.getVolume() + 10);
+      }
     });
 
     this.handleEvent("decVolume", () => {
-      console.log(this.player.getVolume());
-      if (this.player) this.player.setVolume(this.player.getVolume() - 10);
+      if (this.player) {
+        this.player.unMute();
+        this.player.setVolume(this.player.getVolume() - 10);
+      }
     });
   },
 
   initPlayer() {
-    console.log("Initializing player");
-
     this.isInitialized = true;
     this.player = new YT.Player(this.el.id, {
       videoId: this.el.dataset.videoId,
       events: {
         onReady: () => {
           this.player.setVolume(50);
-          this.pushEvent("player_ready", {});
+          this.pushEvent("player_ready", { title: this.player.videoTitle });
         },
       },
       playerVars: {
+        autoplay: 1,
+        mute: 1,
         controls: 0,
-        modestbranding: 1,
         playsinline: 1,
         rel: 0,
       },

@@ -3,18 +3,20 @@ defmodule CafeWeb.RoomLive do
   use CafeWeb, :live_view
 
   def mount(_params, session, socket) do
-    video_id = "UGzTkPauX8U"
+    IO.inspect("render")
+    station = Cafe.Stations.get_station(1)
 
     socket =
       socket
-      |> assign(:video_id, video_id)
+      |> assign(:station, station)
+      |> assign(:title, nil)
       |> assign(:presences, 0)
 
     socket =
       if connected?(socket) do
         session_id = session["session_id"] || Ecto.UUID.generate()
-        CafeWeb.Presence.track_user(video_id, session_id)
-        CafeWeb.Presence.subscribe(video_id)
+        CafeWeb.Presence.track_user(station.video_id, session_id)
+        CafeWeb.Presence.subscribe(station.video_id)
         socket
       else
         socket
@@ -27,7 +29,12 @@ defmodule CafeWeb.RoomLive do
     ~H"""
     <div class="flex flex-col items-stretch justify-between fixed inset-0 overflow-hidden p-12">
       <.live_component module={CafeWeb.RoomStats} id="stats" presences={@presences} />
-      <.live_component module={CafeWeb.PlayerControlsComponent} id="controls" />
+      <.live_component
+        module={CafeWeb.PlayerControlsComponent}
+        title={@title}
+        position={@station.position}
+        id="controls"
+      />
       <div
         class="yt-wrapper pt-32 px-12 pb-48"
         style="position: fixed; inset: 0px; display: flex; align-items: center; justify-content: center; z-index: 0; background: black;"
@@ -38,7 +45,7 @@ defmodule CafeWeb.RoomLive do
               <div
                 id="youtube-player"
                 phx-hook="YouTubePlayer"
-                data-video-id={@video_id}
+                data-video-id={@station.video_id}
                 class="w-full h-full"
               >
               </div>
@@ -58,7 +65,11 @@ defmodule CafeWeb.RoomLive do
     {:noreply, update(socket, :presences, &(&1 - 1))}
   end
 
-  def handle_event("player_ready", _params, socket) do
-    {:noreply, socket}
+  def handle_info({:change_video, station}, socket) do
+    {:noreply, assign(socket, :station, station)}
+  end
+
+  def handle_event("player_ready", %{"title" => title}, socket) do
+    {:noreply, assign(socket, :title, String.trim(title))}
   end
 end
