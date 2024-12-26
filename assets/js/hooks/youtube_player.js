@@ -28,17 +28,17 @@ const YouTubePlayer = {
       if (this.player) this.player.pauseVideo();
     });
 
-    this.handleEvent("incVolume", () => {
+    this.handleEvent("setVolume", ({ volume }) => {
       if (this.player) {
         this.player.unMute();
-        this.player.setVolume(this.player.getVolume() + 10);
+        this.player.setVolume(volume);
       }
     });
 
-    this.handleEvent("decVolume", () => {
+    this.handleEvent("toggleMute", () => {
       if (this.player) {
-        this.player.unMute();
-        this.player.setVolume(this.player.getVolume() - 10);
+        if (this.player.isMuted()) this.player.unMute();
+        else this.player.mute();
       }
     });
   },

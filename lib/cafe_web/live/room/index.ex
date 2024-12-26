@@ -3,7 +3,6 @@ defmodule CafeWeb.RoomLive do
   use CafeWeb, :live_view
 
   def mount(_params, session, socket) do
-    IO.inspect("render")
     station = Cafe.Stations.get_station(1)
 
     socket =
