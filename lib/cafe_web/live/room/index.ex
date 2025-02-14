@@ -3,7 +3,7 @@ defmodule CafeWeb.RoomLive do
   use CafeWeb, :live_view
 
   def mount(_params, session, socket) do
-    station = Cafe.Stations.get_station(1)
+    station = Cafe.Stations.get_station(0)
 
     socket =
       socket
@@ -29,7 +29,7 @@ defmodule CafeWeb.RoomLive do
     <div class="flex flex-col items-stretch justify-between fixed inset-0 overflow-hidden p-12">
       <.live_component module={CafeWeb.RoomStats} id="stats" presences={@presences} />
       <.live_component
-        module={CafeWeb.PlayerControlsComponent}
+        module={CafeWeb.Components.PlayerControls}
         title={@title}
         position={@station.position}
         id="controls"
@@ -40,15 +40,15 @@ defmodule CafeWeb.RoomLive do
       >
         <div style="width: 100%; height: 100%; overflow: hidden; display: flex; align-items: center; justify-content: center; border-radius: 8px;">
           <div style="pointer-events: none; z-index: -1; border-radius: 8px; width: 100vw; height: 200vw;">
-            <div class="player-container w-full h-full">
-              <div
-                id="youtube-player"
-                phx-hook="YouTubePlayer"
-                data-video-id={@station.video_id}
-                class="w-full h-full"
-              >
-              </div>
-            </div>
+            <!-- <div class="player-container w-full h-full"> -->
+            <!--   <div -->
+            <!--     id="youtube-player" -->
+            <!--     phx-hook="YouTubePlayer" -->
+            <!--     data-video-id={@station.video_id} -->
+            <!--     class="w-full h-full" -->
+            <!--   > -->
+            <!--   </div> -->
+            <!-- </div> -->
           </div>
         </div>
       </div>

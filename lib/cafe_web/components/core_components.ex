@@ -17,6 +17,7 @@ defmodule CafeWeb.CoreComponents do
   use Phoenix.Component
 
   alias Phoenix.LiveView.JS
+
   import CafeWeb.Gettext
 
   @doc """

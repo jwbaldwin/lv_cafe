@@ -1,4 +1,4 @@
-defmodule CafeWeb.PlayerControlsComponent do
+defmodule CafeWeb.Components.PlayerControls do
   use CafeWeb, :live_component
 
   def mount(socket) do
