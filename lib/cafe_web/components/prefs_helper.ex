@@ -33,7 +33,7 @@ defmodule CafeWeb.PrefsHelper do
 
   defp string_to_atom_map(map) do
     Map.new(map, fn {k, v} ->
-      {String.to_existing_atom(k), String.to_existing_atom(v)}
+      {String.to_atom(k), String.to_atom(v)}
     end)
   end
 end

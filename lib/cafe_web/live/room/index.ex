@@ -97,6 +97,10 @@ defmodule CafeWeb.RoomLive do
     {:noreply, assign(socket, :station, station)}
   end
 
+  def handle_info({:change_theme, theme, sub_theme}, socket) do
+    {:noreply, set_preference(socket, theme, sub_theme)}
+  end
+
   def handle_event("player_ready", %{"title" => title}, socket) do
     {:noreply, assign(socket, :title, String.trim(title))}
   end

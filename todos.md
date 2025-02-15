@@ -12,3 +12,10 @@
         [/] Next/last
         [/] Volume
     [ ] Play gif with music
+
+
+### NEXT SESSION
+- get a video or two for each season
+- get and effect for each season?
+- allow disabled video and using the images instead
+

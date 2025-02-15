@@ -15,7 +15,8 @@ defmodule CafeWeb.ThemeSwitcher do
   end
 
   def handle_event("select_theme", %{"theme" => theme, "sub_theme" => sub_theme}, socket) do
-    {:noreply, set_preference(socket, theme, sub_theme)}
+    send(self(), {:change_theme, theme, sub_theme})
+    {:noreply, socket}
   end
 
   def render(assigns) do
