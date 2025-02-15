@@ -9,9 +9,9 @@ defmodule Cafe.Stations do
 
   @stations %{
     seasons: %{
-      summer: [],
-      spring: [],
-      autumn: [],
+      summer: ["UGzTkPauX8U", "grQl_OaN2BQ"],
+      spring: ["UGzTkPauX8U", "grQl_OaN2BQ"],
+      autumn: ["UGzTkPauX8U", "grQl_OaN2BQ"],
       winter: ["UGzTkPauX8U", "grQl_OaN2BQ"]
     },
     vibes: %{
@@ -23,7 +23,6 @@ defmodule Cafe.Stations do
   Get the specific station by theme and position
   """
   def get_station(theme, sub_theme, station_number) when is_integer(station_number) do
-    IO.inspect(theme)
     stations = get_in(@stations, [theme, sub_theme])
 
     station_number =
@@ -33,9 +32,11 @@ defmodule Cafe.Stations do
         station_number -> station_number
       end
 
-    IO.inspect(stations)
-    IO.inspect(station_number)
     video_id = Enum.at(stations, station_number)
     %Station{video_id: video_id, position: station_number}
+  end
+
+  def get_stations() do
+    @stations
   end
 end
