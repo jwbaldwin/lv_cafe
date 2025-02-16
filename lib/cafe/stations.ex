@@ -9,9 +9,9 @@ defmodule Cafe.Stations do
 
   @stations %{
     seasons: %{
-      summer: ["UGzTkPauX8U", "grQl_OaN2BQ"],
-      spring: ["UGzTkPauX8U", "grQl_OaN2BQ"],
-      autumn: ["UGzTkPauX8U", "grQl_OaN2BQ"],
+      summer: ["U537141YqTI", "8-BsxrE1bY8"],
+      spring: ["If_UO5D9SdU", "hN5bD_dV20g"],
+      autumn: ["zFXNZNKxDvs", "99PHofIMRaU", "Vg13S-zzol0", "pa6CyLN3wPY"],
       winter: ["UGzTkPauX8U", "grQl_OaN2BQ"]
     },
     vibes: %{

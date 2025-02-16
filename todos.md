@@ -15,7 +15,6 @@
 
 
 ### NEXT SESSION
-- get a video or two for each season
-- get and effect for each season?
-- allow disabled video and using the images instead
-
+- bug with title not updating, will be 1 video behind
+- bug with theme switching not updating video
+- allow disabled video and using the images instead?

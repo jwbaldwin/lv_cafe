@@ -39,6 +39,7 @@ let liveSocket = new LiveSocket("/live", Socket, {
     preferences: JSON.parse(localStorage.getItem("preferences")) || {
       theme: "seasons",
       sub_theme: "winter",
+      volume: 50,
     },
   },
   hooks: Hooks,

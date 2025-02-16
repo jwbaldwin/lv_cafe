@@ -1,6 +1,8 @@
 // assets/js/hooks/youtube_player.js
 const YouTubePlayer = {
   mounted() {
+    if (this.player) return;
+
     if (!window.YT) {
       const tag = document.createElement("script");
       tag.src = "https://www.youtube.com/iframe_api";
@@ -8,16 +10,21 @@ const YouTubePlayer = {
       firstScriptTag.parentNode.insertBefore(tag, firstScriptTag);
 
       window.onYouTubeIframeAPIReady = () => {
-        if (!this.isInitialized) {
+        if (!this.player) {
           this.initPlayer();
         }
       };
-    } else if (!this.isInitialized) {
+    } else if (!this.player) {
       this.initPlayer();
     }
 
-    this.handleEvent("changeVideo", ({ video_id }) => {
-      this.player.loadVideoById(video_id);
+    this.handleEvent("changeVideo", ({ video_id, volume }) => {
+      console.log(video_id, volume);
+      if (this.player) {
+        this.player.loadVideoById(video_id);
+        this.player.setVolume(volume);
+        this.pushEvent("player_ready", { title: this.player.videoTitle });
+      }
     });
 
     this.handleEvent("playVideo", () => {
@@ -44,7 +51,7 @@ const YouTubePlayer = {
   },
 
   initPlayer() {
-    this.isInitialized = true;
+    if (this.player) return;
     this.player = new YT.Player(this.el.id, {
       videoId: this.el.dataset.videoId,
       events: {

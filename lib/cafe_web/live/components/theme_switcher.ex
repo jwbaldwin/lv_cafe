@@ -6,7 +6,7 @@ defmodule CafeWeb.ThemeSwitcher do
   def mount(socket) do
     {:ok,
      socket
-     |> assign(:open, true)
+     |> assign(:open, false)
      |> assign(:seasons, @seasons)}
   end
 
@@ -16,7 +16,7 @@ defmodule CafeWeb.ThemeSwitcher do
 
   def handle_event("select_theme", %{"theme" => theme, "sub_theme" => sub_theme}, socket) do
     send(self(), {:change_theme, theme, sub_theme})
-    {:noreply, socket}
+    {:noreply, assign(socket, :open, false)}
   end
 
   def render(assigns) do
@@ -47,7 +47,22 @@ defmodule CafeWeb.ThemeSwitcher do
           />
         </svg>
       </button>
-      <div :if={@open} class="fixed top-0 right-0 w-full h-full bg-black/50 backdrop-blur-sm">
+      <div
+        :if={@open}
+        phx-mounted={
+          JS.transition(
+            {"ease-out duration-300", "opacity-0 scale-95 backdrop-blur-none",
+             "opacity-100 scale-100 backdrop-blur-sm"}
+          )
+        }
+        phx-remove={
+          JS.transition(
+            {"ease-in duration-200", "opacity-100 scale-100 backdrop-blur-sm",
+             "opacity-0 scale-95 backdrop-blur-none"}
+          )
+        }
+        class="fixed top-0 right-0 w-full h-full bg-black/50 backdrop-blur-sm origin-center"
+      >
         <div class="flex flex-col items-center justify-center h-full">
           <h2 class="-mt-8 pb-4 text-sm font-semibold text-white text-shadow-green">
             Swap your season

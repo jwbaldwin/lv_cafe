@@ -163,17 +163,14 @@ defmodule CafeWeb.Components.PlayerControls do
   end
 
   def handle_event("next_station", _params, socket) do
-    station = Cafe.Stations.get_station(:seasons, :winter, socket.assigns.position + 1)
-    send(self(), {:change_video, station})
+    send(self(), {:change_video, socket.assigns.position + 1, socket.assigns.volume})
 
     {:noreply, socket}
   end
 
   def handle_event("prev_station", _params, socket) do
-    station = Cafe.Stations.get_station(:seasons, :winter, socket.assigns.position - 1)
-    send(self(), {:change_video, station})
-
-    {:noreply, station}
+    send(self(), {:change_video, socket.assigns.position - 1, socket.assigns.volume})
+    {:noreply, socket}
   end
 
   def handle_event("set_volume", %{"volume" => volume}, socket) do
