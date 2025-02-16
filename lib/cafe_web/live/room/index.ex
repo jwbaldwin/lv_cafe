@@ -66,15 +66,13 @@ defmodule CafeWeb.RoomLive do
         />
         <div
           class="yt-wrapper pt-32 px-12 pb-48"
+          id="youtube-player-container"
+          phx-update="ignore"
           style="position: fixed; inset: 0px; display: flex; align-items: center; justify-content: center; z-index: 0; background: black;"
         >
           <div style="width: 100%; height: 100%; overflow: hidden; display: flex; align-items: center; justify-content: center; border-radius: 8px;">
             <div style="pointer-events: none; z-index: -1; border-radius: 8px; width: 100vw; height: 200vw;">
-              <div
-                class="player-container w-full h-full"
-                phx-update="ignore"
-                id="youtube-player-container"
-              >
+              <div class="player-container w-full h-full">
                 <div
                   id="youtube-player"
                   phx-hook="YouTubePlayer"

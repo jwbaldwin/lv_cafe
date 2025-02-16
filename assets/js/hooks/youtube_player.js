@@ -19,11 +19,11 @@ const YouTubePlayer = {
     }
 
     this.handleEvent("changeVideo", ({ video_id, volume }) => {
-      console.log(video_id, volume);
+      console.log("Change video", video_id, volume);
       if (this.player) {
-        this.player.loadVideoById(video_id);
+        console.log("Actually change");
+        this.player.cueVideoById(video_id);
         this.player.setVolume(volume);
-        this.pushEvent("player_ready", { title: this.player.videoTitle });
       }
     });
 
@@ -58,6 +58,13 @@ const YouTubePlayer = {
         onReady: () => {
           this.player.setVolume(50);
           this.pushEvent("player_ready", { title: this.player.videoTitle });
+        },
+        onStateChange: (event) => {
+          console.log(event.data, event.target.videoTitle);
+          if (event.data === YT.PlayerState.CUED) {
+            this.player.playVideo();
+            this.pushEvent("player_ready", { title: event.target.videoTitle });
+          }
         },
       },
       playerVars: {
