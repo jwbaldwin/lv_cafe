@@ -51,6 +51,7 @@ const YouTubePlayer = {
   },
 
   initPlayer() {
+    console.log("initPlayer");
     if (this.player) return;
     this.player = new YT.Player(this.el.id, {
       videoId: this.el.dataset.videoId,

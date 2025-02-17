@@ -19,7 +19,6 @@ defmodule CafeWeb.PrefsHelper do
         sub_theme: String.to_existing_atom(sub_theme)
       })
 
-    # There is an issue here where updating the preferences causes the liveview to re-render
     socket = Phoenix.Component.assign(socket, preferences: new_preferences)
 
     Phoenix.LiveView.push_event(socket, "store_preferences", %{

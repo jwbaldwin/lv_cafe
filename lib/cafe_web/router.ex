@@ -14,7 +14,6 @@ defmodule CafeWeb.Router do
     plug :fetch_live_flash
     plug :put_root_layout, html: {CafeWeb.Layouts, :root}
     plug :protect_from_forgery
-    plug :put_secure_browser_headers
     plug :assign_client_id
   end
 

@@ -109,11 +109,11 @@ defmodule CafeWeb.RoomLive do
   def handle_info({:change_theme, theme, sub_theme}, socket) do
     socket = set_preference(socket, theme, sub_theme)
     station = get_station(socket)
+    IO.inspect(station, label: "station")
 
     {:noreply,
      socket
-     |> push_event("changeVideo", %{video_id: station.video_id, volume: 50})
-     |> assign(station: station)}
+     |> push_event("changeVideo", %{video_id: station.video_id, volume: 50})}
   end
 
   def handle_event("player_ready", %{"title" => title}, socket) do
