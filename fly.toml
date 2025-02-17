@@ -1,9 +1,9 @@
-# fly.toml app configuration file generated for cafe-hidden-brook-1522 on 2025-02-17T10:07:06-05:00
+# fly.toml app configuration file generated for vibes-cafe on 2025-02-17T10:18:44-05:00
 #
 # See https://fly.io/docs/reference/configuration/ for information about how to use this file.
 #
 
-app = 'vibes_cafe'
+app = 'vibes-cafe'
 primary_region = 'iad'
 kill_signal = 'SIGTERM'
 
