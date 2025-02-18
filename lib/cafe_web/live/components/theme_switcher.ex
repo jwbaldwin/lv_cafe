@@ -7,8 +7,8 @@ defmodule CafeWeb.ThemeSwitcher do
     {:ok,
      socket
      |> assign(:open, false)
-     |> assign(:seasons, Stations.get_seasons())
-     |> assign(:vibes, Stations.get_vibes())}
+     |> assign(:seasons, Stations.get_stations(Stations.get_seasons()))
+     |> assign(:vibes, Stations.get_stations(Stations.get_vibes()))}
   end
 
   def handle_event("toggle_switcher", _params, socket) do
@@ -16,6 +16,10 @@ defmodule CafeWeb.ThemeSwitcher do
   end
 
   def handle_event("select_theme", %{"theme" => theme, "sub_theme" => sub_theme}, socket) do
+    select_theme(socket, theme, sub_theme)
+  end
+
+  defp select_theme(socket, theme, sub_theme) do
     send(self(), {:change_theme, theme, sub_theme})
     {:noreply, assign(socket, :open, false)}
   end
@@ -74,39 +78,40 @@ defmodule CafeWeb.ThemeSwitcher do
               class="text-center group"
               phx-click="select_theme"
               phx-value-theme={:seasons}
-              phx-value-sub_theme={season}
+              phx-value-sub_theme={elem(season, 0)}
               phx-target={@myself}
             >
               <img
-                src={~p"/images/themes/seasons/#{season}/thumbs/1.gif"}
-                alt={"#{season} theme"}
+                src={~p"/images/themes/seasons/#{elem(season, 0)}/thumbs/1.gif"}
+                alt={"#{elem(season, 0)} theme"}
                 class={[
                   "w-40 h-40 object-cover rounded-lg group-hover:ring-2 group-hover:ring-white/50",
-                  @preferences.sub_theme == season && "ring-2 ring-green-500/80"
+                  @preferences.sub_theme == elem(season, 0) && "ring-2 ring-green-500/80"
                 ]}
               />
               <span class="pt-2 text-xs text-white text-shadow-green">
-                {season}
+                {elem(season, 1).name}
               </span>
             </button>
             <button
               :for={vibe <- @vibes}
               class="text-center group"
-              phx-click="select_theme"
+              phx-click="select_theme_click"
+              phx-window-keyup="select_theme_key"
               phx-value-theme={:vibes}
-              phx-value-sub_theme={vibe}
+              phx-value-sub_theme={elem(vibe, 0)}
               phx-target={@myself}
             >
               <img
-                src={~p"/images/themes/vibes/#{vibe}/thumbs/1.gif"}
-                alt={"#{vibe} theme"}
+                src={~p"/images/themes/vibes/#{elem(vibe, 0)}/thumbs/1.gif"}
+                alt={"#{elem(vibe, 0)} theme"}
                 class={[
                   "w-40 h-40 object-cover rounded-lg group-hover:ring-2 group-hover:ring-white/50",
-                  @preferences.sub_theme == vibe && "ring-2 ring-green-500/80"
+                  @preferences.sub_theme == elem(vibe, 0) && "ring-2 ring-green-500/80"
                 ]}
               />
               <span class="pt-2 text-xs text-white text-shadow-green">
-                {vibe}
+                {elem(vibe, 1).name}
               </span>
             </button>
           </div>

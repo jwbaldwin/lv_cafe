@@ -28,4 +28,10 @@ defmodule Cafe.StationsTest do
              video_id: "UDxVZ-_0KUw"
            }
   end
+
+  test "get_get_unique_key_map_for_themes/1 returns a map of unique keys for each theme" do
+    assert %{
+             :autumn => %{char: "a", name: "[a]utumn"}
+           } == Stations.get_stations([:autumn])
+  end
 end

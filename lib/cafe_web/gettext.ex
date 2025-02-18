@@ -20,5 +20,5 @@ defmodule CafeWeb.Gettext do
 
   See the [Gettext Docs](https://hexdocs.pm/gettext) for detailed usage.
   """
-  use Gettext, otp_app: :cafe
+  use Gettext.Backend, otp_app: :cafe
 end

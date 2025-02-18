@@ -18,7 +18,7 @@ defmodule CafeWeb.CoreComponents do
 
   alias Phoenix.LiveView.JS
 
-  import CafeWeb.Gettext
+  use Gettext, backend: CafeWeb.Gettext
 
   @doc """
   Renders a modal.

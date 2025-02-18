@@ -43,7 +43,7 @@ defmodule CafeWeb do
         layouts: [html: CafeWeb.Layouts]
 
       import Plug.Conn
-      import CafeWeb.Gettext
+      use Gettext, backend: CafeWeb.Gettext
 
       unquote(verified_routes())
     end
@@ -88,7 +88,7 @@ defmodule CafeWeb do
       import Phoenix.HTML
       # Core UI components and translation
       import CafeWeb.CoreComponents
-      import CafeWeb.Gettext
+      use Gettext, backend: CafeWeb.Gettext
 
       # Shortcut for generating JS commands
       alias Phoenix.LiveView.JS

@@ -15,8 +15,8 @@ defmodule CafeWeb.Components.PlayerControls do
       <div class="flex items-center">
         <%= if @playing do %>
           <button
-            phx-click="pause-click"
-            phx-window-keyup="pause-key"
+            phx-click="pause_click"
+            phx-window-keyup="pause_key"
             phx-target={@myself}
             class="px-4 py-2 text-white hover:text-shadow-green text-shadow-green"
           >
@@ -38,8 +38,8 @@ defmodule CafeWeb.Components.PlayerControls do
           </button>
         <% else %>
           <button
-            phx-click="play-click"
-            phx-window-keyup="play-key"
+            phx-click="play_click"
+            phx-window-keyup="play_key"
             phx-target={@myself}
             class="px-4 py-2 text-white hover:text-shadow-green text-shadow-green"
           >
@@ -119,8 +119,8 @@ defmodule CafeWeb.Components.PlayerControls do
         </div>
         <div class="mute-buttons px-2">
           <button
-            phx-click="mute-click"
-            phx-window-keyup="mute-key"
+            phx-click="mute_click"
+            phx-window-keyup="mute_key"
             phx-target={@myself}
             class="px-2 py-2 text-white hover:text-shadow-green text-shadow-green"
           >
@@ -157,27 +157,27 @@ defmodule CafeWeb.Components.PlayerControls do
     """
   end
 
-  def handle_event("play-click", _params, socket) do
+  def handle_event("play_click", _params, socket) do
     play_video(socket)
   end
 
-  def handle_event("play-key", %{"key" => " ", "value" => ""}, socket) do
+  def handle_event("play_key", %{"key" => " ", "value" => ""}, socket) do
     play_video(socket)
   end
 
-  def handle_event("play-key", _, socket) do
+  def handle_event("play_key", _, socket) do
     {:noreply, socket}
   end
 
-  def handle_event("pause-click", _params, socket) do
+  def handle_event("pause_click", _params, socket) do
     pause_video(socket)
   end
 
-  def handle_event("pause-key", %{"key" => " ", "value" => ""}, socket) do
+  def handle_event("pause_key", %{"key" => " ", "value" => ""}, socket) do
     pause_video(socket)
   end
 
-  def handle_event("pause-key", _, socket) do
+  def handle_event("pause_key", _, socket) do
     {:noreply, socket}
   end
 
@@ -205,15 +205,15 @@ defmodule CafeWeb.Components.PlayerControls do
      |> assign(:volume, String.to_integer(volume))}
   end
 
-  def handle_event("mute-click", %{"value" => ""}, socket) do
+  def handle_event("mute_click", %{"value" => ""}, socket) do
     toggle_mute(socket)
   end
 
-  def handle_event("mute-key", %{"key" => "m", "value" => ""}, socket) do
+  def handle_event("mute_key", %{"key" => "m", "value" => ""}, socket) do
     toggle_mute(socket)
   end
 
-  def handle_event("mute-key", _, socket) do
+  def handle_event("mute_key", _, socket) do
     {:noreply, socket}
   end
 
