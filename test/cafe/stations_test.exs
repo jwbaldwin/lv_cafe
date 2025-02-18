@@ -16,4 +16,16 @@ defmodule Cafe.StationsTest do
              :rainy_day
            ]
   end
+
+  test "get_station/3 returns a station by theme and position" do
+    assert Stations.get_station(:seasons, :spring, 0) == %Stations.Station{
+             position: 0,
+             video_id: "If_UO5D9SdU"
+           }
+
+    assert Stations.get_station(:vibes, :blade_runner, 0) == %Stations.Station{
+             position: 0,
+             video_id: "UDxVZ-_0KUw"
+           }
+  end
 end

@@ -66,9 +66,9 @@ defmodule CafeWeb.ThemeSwitcher do
       >
         <div class="flex flex-col items-center justify-center h-full">
           <h2 class="-mt-8 pb-4 text-sm font-semibold text-white text-shadow-green">
-            Swap your season
+            Pick a season or vibe
           </h2>
-          <div class="grid grid-cols-2 place-content-evenly gap-12">
+          <div class="grid grid-cols-4 place-content-evenly gap-12">
             <button
               :for={season <- @seasons}
               class="text-center group"
@@ -93,7 +93,7 @@ defmodule CafeWeb.ThemeSwitcher do
               :for={vibe <- @vibes}
               class="text-center group"
               phx-click="select_theme"
-              phx-value-theme={:vibe}
+              phx-value-theme={:vibes}
               phx-value-sub_theme={vibe}
               phx-target={@myself}
             >

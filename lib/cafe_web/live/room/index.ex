@@ -4,8 +4,6 @@ defmodule CafeWeb.RoomLive do
   alias Cafe.Stations
 
   def mount(_params, session, socket) do
-    IO.inspect(get_connect_params(socket))
-
     socket =
       socket
       |> assign(:title, nil)
@@ -29,6 +27,8 @@ defmodule CafeWeb.RoomLive do
   end
 
   defp get_station(socket, pos \\ 0) do
+    IO.inspect(socket.assigns.preferences, label: "preferences")
+
     Stations.get_station(
       socket.assigns.preferences.theme,
       socket.assigns.preferences.sub_theme,
@@ -109,7 +109,6 @@ defmodule CafeWeb.RoomLive do
   def handle_info({:change_theme, theme, sub_theme}, socket) do
     socket = set_preference(socket, theme, sub_theme)
     station = get_station(socket)
-    IO.inspect(station, label: "station")
 
     {:noreply,
      socket
