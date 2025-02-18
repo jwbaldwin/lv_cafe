@@ -1,13 +1,14 @@
 defmodule CafeWeb.ThemeSwitcher do
   use CafeWeb, :live_component
 
-  @seasons [:spring, :summer, :autumn, :winter]
+  alias Cafe.Stations
 
   def mount(socket) do
     {:ok,
      socket
      |> assign(:open, false)
-     |> assign(:seasons, @seasons)}
+     |> assign(:seasons, Stations.get_seasons())
+     |> assign(:vibes, Stations.get_vibes())}
   end
 
   def handle_event("toggle_switcher", _params, socket) do
@@ -68,27 +69,46 @@ defmodule CafeWeb.ThemeSwitcher do
             Swap your season
           </h2>
           <div class="grid grid-cols-2 place-content-evenly gap-12">
-            <%= for season <- @seasons do %>
-              <button
-                class="text-center group"
-                phx-click="select_theme"
-                phx-value-theme={:seasons}
-                phx-value-sub_theme={season}
-                phx-target={@myself}
-              >
-                <img
-                  src={~p"/images/themes/seasons/#{season}/1.png"}
-                  alt={"#{season} theme"}
-                  class={[
-                    "w-40 h-40 object-cover rounded-lg group-hover:ring-2 group-hover:ring-white/50",
-                    @preferences.sub_theme == season && "ring-2 ring-green-500/80"
-                  ]}
-                />
-                <span class="pt-2 text-xs text-white text-shadow-green">
-                  {season}
-                </span>
-              </button>
-            <% end %>
+            <button
+              :for={season <- @seasons}
+              class="text-center group"
+              phx-click="select_theme"
+              phx-value-theme={:seasons}
+              phx-value-sub_theme={season}
+              phx-target={@myself}
+            >
+              <img
+                src={~p"/images/themes/seasons/#{season}/thumbs/1.gif"}
+                alt={"#{season} theme"}
+                class={[
+                  "w-40 h-40 object-cover rounded-lg group-hover:ring-2 group-hover:ring-white/50",
+                  @preferences.sub_theme == season && "ring-2 ring-green-500/80"
+                ]}
+              />
+              <span class="pt-2 text-xs text-white text-shadow-green">
+                {season}
+              </span>
+            </button>
+            <button
+              :for={vibe <- @vibes}
+              class="text-center group"
+              phx-click="select_theme"
+              phx-value-theme={:vibe}
+              phx-value-sub_theme={vibe}
+              phx-target={@myself}
+            >
+              <img
+                src={~p"/images/themes/vibes/#{vibe}/thumbs/1.gif"}
+                alt={"#{vibe} theme"}
+                class={[
+                  "w-40 h-40 object-cover rounded-lg group-hover:ring-2 group-hover:ring-white/50",
+                  @preferences.sub_theme == vibe && "ring-2 ring-green-500/80"
+                ]}
+              />
+              <span class="pt-2 text-xs text-white text-shadow-green">
+                {vibe}
+              </span>
+            </button>
           </div>
         </div>
       </div>

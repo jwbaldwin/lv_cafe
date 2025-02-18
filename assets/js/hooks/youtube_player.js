@@ -19,9 +19,7 @@ const YouTubePlayer = {
     }
 
     this.handleEvent("changeVideo", ({ video_id, volume }) => {
-      console.log("Change video", video_id, volume);
       if (this.player) {
-        console.log("Actually change");
         this.player.cueVideoById(video_id);
         this.player.setVolume(volume);
       }
@@ -51,7 +49,6 @@ const YouTubePlayer = {
   },
 
   initPlayer() {
-    console.log("initPlayer");
     if (this.player) return;
     this.player = new YT.Player(this.el.id, {
       videoId: this.el.dataset.videoId,
@@ -61,7 +58,6 @@ const YouTubePlayer = {
           this.pushEvent("player_ready", { title: this.player.videoTitle });
         },
         onStateChange: (event) => {
-          console.log(event.data, event.target.videoTitle);
           if (event.data === YT.PlayerState.CUED) {
             this.player.playVideo();
             this.pushEvent("player_ready", { title: event.target.videoTitle });
