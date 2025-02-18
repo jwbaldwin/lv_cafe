@@ -12,11 +12,11 @@ defmodule Cafe.Stations do
       spring: ["If_UO5D9SdU", "hN5bD_dV20g"],
       summer: ["U537141YqTI", "8-BsxrE1bY8"],
       autumn: ["zFXNZNKxDvs", "99PHofIMRaU", "Vg13S-zzol0", "pa6CyLN3wPY"],
-      winter: ["UGzTkPauX8U", "grQl_OaN2BQ"]
+      winter: ["C5Jrme_XWyA"]
     },
     vibes: %{
-      blade_runner: ["UDxVZ-_0KUw"],
-      christmas: [],
+      blade_runner: ["UDxVZ-_0KUw", "-sZqtdT-GVw", "S7i3ugniyjg"],
+      christmas: ["UGzTkPauX8U", "grQl_OaN2BQ"],
       cozy: [],
       locked_in: ["OvM7WAzfBHs", "Yd7vDterctQ", "6rvv8bU3pKA"],
       rainy_day: []
