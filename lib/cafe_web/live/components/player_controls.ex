@@ -16,7 +16,8 @@ defmodule CafeWeb.Components.PlayerControls do
         <%= if @playing do %>
           <button
             phx-click="pause_click"
-            phx-window-keyup="pause_key"
+            phx-keyup="pause_key"
+            phx-key=" "
             phx-target={@myself}
             class="px-4 py-2 text-white hover:text-shadow-green text-shadow-green"
           >
@@ -39,7 +40,8 @@ defmodule CafeWeb.Components.PlayerControls do
         <% else %>
           <button
             phx-click="play_click"
-            phx-window-keyup="play_key"
+            phx-keyup="play_key"
+            phx-key=" "
             phx-target={@myself}
             class="px-4 py-2 text-white hover:text-shadow-green text-shadow-green"
           >
@@ -120,7 +122,8 @@ defmodule CafeWeb.Components.PlayerControls do
         <div class="mute-buttons px-2">
           <button
             phx-click="mute_click"
-            phx-window-keyup="mute_key"
+            phx-keyup="mute_key"
+            phx-key="m"
             phx-target={@myself}
             class="px-2 py-2 text-white hover:text-shadow-green text-shadow-green"
           >
