@@ -79,7 +79,17 @@ defmodule CafeWeb.RoomLive do
         >
           <div style="width: 100%; height: 100%; overflow: hidden; display: flex; align-items: center; justify-content: center; border-radius: 8px;">
             <div style="pointer-events: none; z-index: -1; border-radius: 8px; width: 100vw; height: 200vw;">
-              <div class="player-container w-full h-full"></div>
+              <div class="player-container w-full h-full">
+                <div class="player-container w-full h-full">
+                  <div
+                    id="youtube-player"
+                    phx-hook="YouTubePlayer"
+                    data-video-id={@station.video_id}
+                    class="w-full h-full"
+                  >
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
         </div>
