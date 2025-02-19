@@ -11,28 +11,19 @@ defmodule CafeWeb.ThemeSwitcher do
      |> assign(:vibes, Stations.get_stations(Stations.get_vibes()))}
   end
 
-  def handle_event("toggle_switcher_click", _params, socket) do
+  def handle_event("toggle_switcher", _params, socket) do
     {:noreply, assign(socket, :open, !socket.assigns.open)}
   end
 
-  def handle_event("toggle_switcher_key", %{"key" => "t", "value" => ""}, socket) do
-    {:noreply, assign(socket, :open, !socket.assigns.open)}
-  end
-
-  def handle_event("toggle_switcher_key", _, socket) do
-    {:noreply, socket}
-  end
-
-  def handle_event("select_theme_click", %{"theme" => theme, "sub_theme" => sub_theme}, socket) do
+  def handle_event("select_theme", %{"theme" => theme, "sub_theme" => sub_theme}, socket) do
     select_theme(socket, theme, sub_theme)
   end
 
-  def handle_event(
-        "select_theme_key",
-        %{"theme" => theme, "sub_theme" => sub_theme, "key" => key},
-        socket
-      ) do
-    select_theme(socket, theme, sub_theme)
+  def handle_event("control_keypress", %{"key" => key} = params, socket) do
+    case key do
+      "t" -> {:noreply, assign(socket, :open, !socket.assigns.open)}
+      _theme_key -> select_theme(socket, params["theme"], params["sub_theme"])
+    end
   end
 
   defp select_theme(socket, theme, sub_theme) do
@@ -42,13 +33,13 @@ defmodule CafeWeb.ThemeSwitcher do
 
   def render(assigns) do
     ~H"""
-    <div id="themes" class="relative block w-full z-[90]">
+    <div id="themes" class="relative z-[90]">
       <button
-        phx-click="toggle_switcher_click"
-        phx-keyup="toggle_switcher_key"
+        phx-click="toggle_switcher"
+        phx-window-keyup="control_keypress"
         phx-key="t"
         phx-target={@myself}
-        class="fixed top-4 right-4 rounded-full p-2 text-white svg-shadow-red z-[90]"
+        class="p-2 text-white svg-shadow-red z-[90]"
       >
         <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
           <g opacity="0.12">
@@ -72,6 +63,8 @@ defmodule CafeWeb.ThemeSwitcher do
       </button>
       <div
         :if={@open}
+        phx-click="toggle_switcher"
+        phx-target={@myself}
         phx-mounted={
           JS.transition(
             {"ease-out duration-300", "opacity-0 scale-95 backdrop-blur-none",
@@ -86,15 +79,17 @@ defmodule CafeWeb.ThemeSwitcher do
         }
         class="fixed top-0 right-0 w-full h-full bg-black/50 backdrop-blur-sm origin-center"
       >
-        <div class="flex flex-col items-center justify-center h-full">
-          <h2 class="-mt-8 pb-4 text-sm font-semibold text-white text-shadow-green">
-            Pick a season or vibe
+        <div class="flex flex-col items-center pt-20">
+          <h2 class="pb-4 text-base text-white text-shadow-green">
+            pick a season or vibe
           </h2>
           <div class="grid grid-cols-4 place-content-evenly gap-12">
             <button
               :for={season <- @seasons}
               class="text-center group"
               phx-click="select_theme"
+              phx-window-keyup="control_keypress"
+              phx-key={elem(season, 1).char}
               phx-value-theme={:seasons}
               phx-value-sub_theme={elem(season, 0)}
               phx-target={@myself}
@@ -114,7 +109,9 @@ defmodule CafeWeb.ThemeSwitcher do
             <button
               :for={vibe <- @vibes}
               class="text-center group"
-              phx-click="select_theme_click"
+              phx-click="select_theme"
+              phx-window-keyup="control_keypress"
+              phx-key={elem(vibe, 1).char}
               phx-value-theme={:vibes}
               phx-value-sub_theme={elem(vibe, 0)}
               phx-target={@myself}

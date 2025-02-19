@@ -4,19 +4,18 @@ defmodule CafeWeb.Components.PlayerControls do
   def mount(socket) do
     {:ok,
      socket
-     |> assign(:volume, 50)
      |> assign(:playing, true)
      |> assign(:muted, true)}
   end
 
   def render(assigns) do
     ~H"""
-    <div class="relative block width-full z-[2]">
+    <div class="relative block w-full z-[2]">
       <div class="flex items-center">
         <%= if @playing do %>
           <button
-            phx-click="pause_click"
-            phx-keyup="pause_key"
+            phx-click="pause"
+            phx-window-keyup="control_keypress"
             phx-key=" "
             phx-target={@myself}
             class="px-4 py-2 text-white hover:text-shadow-green text-shadow-green"
@@ -39,8 +38,8 @@ defmodule CafeWeb.Components.PlayerControls do
           </button>
         <% else %>
           <button
-            phx-click="play_click"
-            phx-keyup="play_key"
+            phx-click="play"
+            phx-window-keyup="control_keypress"
             phx-key=" "
             phx-target={@myself}
             class="px-4 py-2 text-white hover:text-shadow-green text-shadow-green"
@@ -121,8 +120,8 @@ defmodule CafeWeb.Components.PlayerControls do
         </div>
         <div class="mute-buttons px-2">
           <button
-            phx-click="mute_click"
-            phx-keyup="mute_key"
+            phx-click="mute"
+            phx-window-keyup="control_keypress"
             phx-key="m"
             phx-target={@myself}
             class="px-2 py-2 text-white hover:text-shadow-green text-shadow-green"
@@ -160,34 +159,16 @@ defmodule CafeWeb.Components.PlayerControls do
     """
   end
 
-  def handle_event("play_click", _params, socket) do
-    play_video(socket)
+  def handle_event("play", _params, socket) do
+    toggle_video(socket)
   end
 
-  def handle_event("play_key", %{"key" => " ", "value" => ""}, socket) do
-    play_video(socket)
+  def handle_event("pause", _params, socket) do
+    toggle_video(socket)
   end
 
-  def handle_event("play_key", _, socket) do
-    {:noreply, socket}
-  end
-
-  def handle_event("pause_click", _params, socket) do
-    pause_video(socket)
-  end
-
-  def handle_event("pause_key", %{"key" => " ", "value" => ""}, socket) do
-    pause_video(socket)
-  end
-
-  def handle_event("pause_key", _, socket) do
-    {:noreply, socket}
-  end
-
-  def handle_event("player_state_changed", %{"state" => state}, socket) do
-    # YouTube states: -1 (unstarted), 0 (ended), 1 (playing), 2 (paused), 3 (buffering), 5 (cued)
-    playing = state == 1
-    {:noreply, assign(socket, :playing, playing)}
+  def handle_event("mute", %{"value" => ""}, socket) do
+    toggle_mute(socket)
   end
 
   def handle_event("next_station", _params, socket) do
@@ -202,30 +183,27 @@ defmodule CafeWeb.Components.PlayerControls do
   end
 
   def handle_event("set_volume", %{"volume" => volume}, socket) do
+    send(self(), {:volume_changed, String.to_integer(volume)})
+
     {:noreply,
      socket
      |> push_event("setVolume", %{volume: volume})
-     |> assign(:volume, String.to_integer(volume))}
+     |> assign(:muted, false)}
   end
 
-  def handle_event("mute_click", %{"value" => ""}, socket) do
-    toggle_mute(socket)
+  def handle_event("control_keypress", %{"key" => key, "value" => ""}, socket) do
+    case key do
+      " " -> toggle_video(socket)
+      "m" -> toggle_mute(socket)
+      _ -> {:noreply, socket}
+    end
   end
 
-  def handle_event("mute_key", %{"key" => "m", "value" => ""}, socket) do
-    toggle_mute(socket)
-  end
-
-  def handle_event("mute_key", _, socket) do
-    {:noreply, socket}
-  end
-
-  defp play_video(socket) do
-    {:noreply, push_event(socket, "playVideo", %{}) |> assign(:playing, true)}
-  end
-
-  defp pause_video(socket) do
-    {:noreply, push_event(socket, "pauseVideo", %{}) |> assign(:playing, false)}
+  defp toggle_video(socket) do
+    case socket.assigns.playing do
+      true -> {:noreply, push_event(socket, "pauseVideo", %{}) |> assign(:playing, false)}
+      false -> {:noreply, push_event(socket, "playVideo", %{}) |> assign(:playing, true)}
+    end
   end
 
   defp toggle_mute(socket) do

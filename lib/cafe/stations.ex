@@ -7,6 +7,9 @@ defmodule Cafe.Stations do
 
   alias Cafe.Stations.Station
 
+  # Mute, toggle themes, and pause/play
+  @global_keys ["m", "t", " "]
+
   @stations %{
     seasons: %{
       spring: ["If_UO5D9SdU", "hN5bD_dV20g"],
@@ -37,18 +40,28 @@ defmodule Cafe.Stations do
   @doc """
   Get the specific station by theme and position
   """
-  def get_station(theme, sub_theme, station_number) when is_integer(station_number) do
-    stations = get_in(@stations, [theme, sub_theme])
+  def fetch_station(theme, sub_theme, station_number) when is_integer(station_number) do
+    case get_in(@stations, [theme, sub_theme]) do
+      nil ->
+        {:error, :station_not_found}
 
-    station_number =
-      case station_number do
-        station_number when station_number > length(stations) - 1 -> 0
-        station_number when station_number < 0 -> length(stations) - 1
-        station_number -> station_number
-      end
+      [] ->
+        {:error, :station_empty}
 
-    video_id = Enum.at(stations, station_number)
-    %Station{video_id: video_id, position: station_number}
+      stations ->
+        station_number =
+          case station_number do
+            station_number when station_number > length(stations) - 1 -> 0
+            station_number when station_number < 0 -> length(stations) - 1
+            station_number -> station_number
+          end
+
+        if video_id = Enum.at(stations, station_number) do
+          {:ok, %Station{video_id: video_id, position: station_number}}
+        else
+          {:error, :video_not_found}
+        end
+    end
   end
 
   @doc """
@@ -60,8 +73,11 @@ defmodule Cafe.Stations do
   def get_stations(theme_names) do
     theme_names
     |> Enum.with_index()
-    |> Enum.reduce(%{keys: MapSet.new(), mapping: %{}}, fn {name, index},
-                                                           %{keys: set, mapping: mapping} ->
+    |> Enum.reduce(%{keys: MapSet.new(@global_keys), mapping: %{}}, fn {name, index},
+                                                                       %{
+                                                                         keys: set,
+                                                                         mapping: mapping
+                                                                       } ->
       string_name = Atom.to_string(name)
 
       char = get_unique_character(set, string_name, 0, index)
