@@ -15,7 +15,6 @@
 
 
 ### NEXT SESSION
-- bug with title not updating, will be 1 video behind
-- bug with theme switching not updating video even though we get the
-right station in the hook - somethigns causing the video to not udpate
 - allow disabled video and using the images instead?
+- bug when switching from season to vibe video no clue
+- add cool favicon
