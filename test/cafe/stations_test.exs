@@ -18,20 +18,28 @@ defmodule Cafe.StationsTest do
   end
 
   test "get_station/3 returns a station by theme and position" do
-    assert Stations.get_station(:seasons, :spring, 0) == %Stations.Station{
-             position: 0,
-             video_id: "If_UO5D9SdU"
-           }
+    assert {:ok,
+            %Stations.Station{
+              position: 0,
+              video_id: "If_UO5D9SdU"
+            }} == Stations.fetch_station(:seasons, :spring, 0)
 
-    assert Stations.get_station(:vibes, :blade_runner, 0) == %Stations.Station{
-             position: 0,
-             video_id: "UDxVZ-_0KUw"
-           }
+    assert {:ok,
+            %Stations.Station{
+              position: 0,
+              video_id: "UDxVZ-_0KUw"
+            }} == Stations.fetch_station(:vibes, :blade_runner, 0)
   end
 
   test "get_get_unique_key_map_for_themes/1 returns a map of unique keys for each theme" do
     assert %{
              :autumn => %{char: "a", name: "[a]utumn"}
            } == Stations.get_stations([:autumn])
+  end
+
+  test "get_get_unique_key_map_for_themes/1 returns a map of unique keys for each theme morning" do
+    assert %{
+             :autumn => %{char: "a", name: "[a]utumn"}
+           } == Stations.get_stations(Stations.get_seasons() ++ Stations.get_vibes())
   end
 end

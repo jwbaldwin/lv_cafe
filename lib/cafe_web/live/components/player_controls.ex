@@ -10,7 +10,7 @@ defmodule CafeWeb.Components.PlayerControls do
 
   def render(assigns) do
     ~H"""
-    <div class="relative block w-full z-[2]">
+    <div class="absolute bottom-0 left-0 w-full py-8 px-12 z-[2]">
       <div class="flex items-center">
         <%= if @playing do %>
           <button

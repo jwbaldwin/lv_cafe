@@ -33,7 +33,7 @@ defmodule CafeWeb.ThemeSwitcher do
 
   def render(assigns) do
     ~H"""
-    <div id="themes" class="relative z-[90]">
+    <div id="themes" class="absolute top-8 right-20 z-[90]">
       <button
         phx-click="toggle_switcher"
         phx-window-keyup="control_keypress"

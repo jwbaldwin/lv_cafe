@@ -97,7 +97,7 @@ defmodule Cafe.Stations do
   end
 
   defp get_styled_name(name, char) do
-    String.replace(name, char, "[#{char}]")
+    String.replace(name, char, "[#{char}]", global: false)
   end
 
   defp get_unique_character(set, name, position, index_fallback)
@@ -105,7 +105,7 @@ defmodule Cafe.Stations do
     test_char = String.at(name, position)
 
     if MapSet.member?(set, test_char) do
-      get_unique_character(set, name, 1, index_fallback)
+      get_unique_character(set, name, position + 1, index_fallback)
     else
       test_char
     end

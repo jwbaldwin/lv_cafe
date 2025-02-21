@@ -55,15 +55,13 @@ defmodule CafeWeb.RoomLive do
         </div>
       <% else %>
         <CafeWeb.Effects.effect effect={@preferences.sub_theme} />
-        <div id="top-info" class="absolute top-0 left-0 right-0 flex w-full py-8 px-12 z-[2]">
-          <.live_component module={CafeWeb.RoomStats} id="stats" presences={@presences} />
-          <.live_component
-            module={CafeWeb.ThemeSwitcher}
-            preferences={@preferences}
-            id="theme-switcher"
-          />
-          <.info_panel id="info-panel" info_panel={@info_panel} />
-        </div>
+        <.live_component module={CafeWeb.RoomStats} id="stats" presences={@presences} />
+        <.live_component
+          module={CafeWeb.ThemeSwitcher}
+          preferences={@preferences}
+          id="theme-switcher"
+        />
+        <.info_panel id="info-panel" info_panel={@info_panel} />
         <.live_component
           module={CafeWeb.Components.PlayerControls}
           title={@title}
@@ -100,7 +98,7 @@ defmodule CafeWeb.RoomLive do
 
   defp info_panel(assigns) do
     ~H"""
-    <div class="z-[2] text-white text-shadow-green text-sm text-right">
+    <div class="absolute top-0 right-0 py-8 px-12 z-[2] text-white text-shadow-green text-sm text-right">
       <div>
         <button phx-click="toggle_info_panel" class="p-2 text-white svg-shadow-red">
           <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
