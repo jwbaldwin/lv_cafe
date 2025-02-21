@@ -7,7 +7,7 @@ defmodule Cafe.Stations do
 
   alias Cafe.Stations.Station
 
-  # Mute, toggle themes, and pause/play
+  # Mute, toggle themes, and pause/play are reserved for the UI
   @global_keys ["m", "t", " "]
 
   @stations %{
@@ -15,14 +15,15 @@ defmodule Cafe.Stations do
       spring: ["If_UO5D9SdU", "hN5bD_dV20g"],
       summer: ["U537141YqTI", "8-BsxrE1bY8"],
       autumn: ["zFXNZNKxDvs", "99PHofIMRaU", "Vg13S-zzol0", "pa6CyLN3wPY"],
-      winter: ["C5Jrme_XWyA"]
+      winter: ["C5Jrme_XWyA", "HNCgEbZN65s"]
     },
     vibes: %{
-      blade_runner: ["UDxVZ-_0KUw", "-sZqtdT-GVw", "S7i3ugniyjg"],
+      blade_runner: ["UDxVZ-_0KUw", "-sZqtdT-GVw", "S7i3ugniyjg", "A4kU-LiaXiE"],
       christmas: ["UGzTkPauX8U", "grQl_OaN2BQ"],
-      cozy: [],
+      cozy: ["jfKfPfyJRdk", "ySEqsRMPjz8"],
       locked_in: ["OvM7WAzfBHs", "Yd7vDterctQ", "6rvv8bU3pKA"],
-      rainy_day: []
+      rainy_day: ["ifptFpMbcn4", "DEWzT1geuPU"],
+      morning_coffee: ["GRSTnYTpDw8", "Rs0EOzsJPU0"]
     }
   }
 
