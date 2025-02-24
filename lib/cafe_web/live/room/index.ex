@@ -127,13 +127,15 @@ defmodule CafeWeb.RoomLive do
         class="fixed right-4 top-24"
       >
         <pre class="text-gray-300 font-mono">
-    +--------------------+
-    |         <.link navigate="https://x.com/jwbaldwin" class="text-white">@jwbaldwin</.link> |
-    |                    |
-    | [space] pause/play |
-    |    [m] mute/unmute |
-    |    [t] change vibe |
-    +--------------------+
+    +---------------------+
+    |          <.link navigate="https://x.com/jwbaldwin" class="text-white">@jwbaldwin</.link> |
+    |                     |
+    |  [space] pause/play |
+    |     [m] mute/unmute |
+    |     [t] change vibe |
+    | [←][→] prev/next    |
+    | [↑][↓] volume       |
+    +---------------------+
     </pre>
       </div>
     </div>
