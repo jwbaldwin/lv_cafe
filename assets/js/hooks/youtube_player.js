@@ -3,6 +3,27 @@ const YouTubePlayer = {
   mounted() {
     if (this.player) return;
 
+    // Prevent YouTube from capturing keyboard events with capture phase
+    document.addEventListener(
+      "keydown",
+      (e) => {
+        if (
+          [
+            "m",
+            " ",
+            "ArrowLeft",
+            "ArrowRight",
+            "ArrowUp",
+            "ArrowDown",
+          ].includes(e.key)
+        ) {
+          e.preventDefault();
+          e.stopPropagation();
+        }
+      },
+      true,
+    );
+
     if (!window.YT) {
       const tag = document.createElement("script");
       tag.src = "https://www.youtube.com/iframe_api";
@@ -76,7 +97,7 @@ const YouTubePlayer = {
         controls: 0,
         playsinline: 1,
         rel: 0,
-        kbcontrols: 1,
+        disablekb: 1,
       },
     });
   },
