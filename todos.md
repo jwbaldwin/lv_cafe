@@ -17,4 +17,7 @@
 ### NEXT SESSION
 - allow disabled video and using the images instead?
 - bug when switching from season to vibe video no clue
-- add cool favicon
+- would be nice to share a link to a station but i think /winter/locked_in/0 is lame
+    it would be cooler if the link was like a short slug like /aSllK3nkne that mapped to the station
+    this seems more mysterious
+
