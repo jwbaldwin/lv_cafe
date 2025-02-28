@@ -8,7 +8,7 @@ defmodule Cafe.Stations do
   alias Cafe.Stations.Station
 
   # Mute, toggle themes, pause/play, navigation, and volume controls are reserved for the UI
-  @global_keys ["m", "t", " ", "ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown"]
+  @global_keys ["p", "m", "t", " ", "ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown"]
 
   @stations %{
     seasons: %{
