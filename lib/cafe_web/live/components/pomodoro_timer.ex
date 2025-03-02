@@ -36,7 +36,11 @@ defmodule CafeWeb.PomodoroTimer do
         :break -> socket.assigns.break_duration
       end
 
-    {:noreply, socket |> assign(:timer_state, :stopped) |> assign(:time_left, time_left)}
+    {:noreply,
+     socket
+     |> assign(:timer_state, :stopped)
+     |> assign(:time_left, time_left)
+     |> assign(:current_timer, :work)}
   end
 
   def handle_event("control_keypress", %{"key" => key}, socket) do
@@ -47,7 +51,6 @@ defmodule CafeWeb.PomodoroTimer do
   end
 
   def update(assigns, socket) do
-    IO.inspect(assigns, label: "assigns")
     assigns = socket.assigns
 
     if socket.assigns.timer_state == :running do
@@ -82,8 +85,6 @@ defmodule CafeWeb.PomodoroTimer do
       {:ok, socket}
     end
   end
-
-  def update(_assigns, socket), do: {:ok, socket}
 
   defp format_time(seconds) do
     minutes = div(seconds, 60)
@@ -132,7 +133,7 @@ defmodule CafeWeb.PomodoroTimer do
         |  work:   <%= if @current_timer == :work, do: format_time(@time_left), else: format_time(@work_duration)  %> |
         | break:   <%= if @current_timer == :break, do: format_time(@time_left), else: format_time(@break_duration)  %> |
         |                |
-        | <%= if @timer_state == :running do %><button phx-click="pause_timer" phx-target={@myself} class="text-white text-shadow-white hover:text-white">[paus]</button><% else %><button phx-click="start_timer" phx-target={@myself} class="text-white text-shadow-white hover:text-white">[play]</button><% end %>   <button phx-click="reset_timer" phx-target={@myself} class="text-white text-shadow-red hover:text-white">[rst]</button> |
+        | <%= if @timer_state == :running do %><button phx-click="pause_timer" phx-target={@myself} class="text-white text-shadow-white hover:text-white">[paus]</button><% else %><button phx-click="start_timer" phx-target={@myself} class="text-white text-shadow-white hover:text-white">[strt]</button><% end %>   <button phx-click="reset_timer" phx-target={@myself} class="text-white text-shadow-red hover:text-white">[rst]</button> |
         +----------------+
         </pre>
       </div>
