@@ -3,6 +3,7 @@ defmodule Cafe.Stations.Station do
   import Ecto.Changeset
 
   schema "stations" do
+    field :name, :string
     field :video_id, :string
     field :position, :integer
 
@@ -12,7 +13,7 @@ defmodule Cafe.Stations.Station do
   @doc false
   def changeset(station, attrs) do
     station
-    |> cast(attrs, [:position, :video_id])
+    |> cast(attrs, [:name, :position, :video_id])
     |> validate_required([:video_id])
   end
 end

@@ -5,9 +5,12 @@ defmodule CafeWeb.Presence do
   See the [`Phoenix.Presence`](https://hexdocs.pm/phoenix/Phoenix.Presence.html)
   docs for more details.
   """
+
   use Phoenix.Presence,
     otp_app: :cafe,
     pubsub_server: Cafe.PubSub
+
+  alias Cafe.Stations
 
   def init(_opts) do
     # user-land state
@@ -35,6 +38,14 @@ defmodule CafeWeb.Presence do
     end
 
     {:ok, state}
+  end
+
+  def list_all_listener_counts() do
+    Stations.all_stations()
+    |> Enum.reduce(%{}, fn station, acc ->
+      station = Atom.to_string(station)
+      Map.put(acc, station, list_online_users(station))
+    end)
   end
 
   def list_online_users(station),

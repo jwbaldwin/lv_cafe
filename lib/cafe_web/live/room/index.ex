@@ -18,8 +18,8 @@ defmodule CafeWeb.RoomLive do
 
         socket = assign(socket, :station, station)
         session_id = session["session_id"] || Ecto.UUID.generate()
-        CafeWeb.Presence.track_user(station.video_id, session_id)
-        CafeWeb.Presence.subscribe(station.video_id)
+        CafeWeb.Presence.track_user(station.name, session_id)
+        CafeWeb.Presence.subscribe(station.name)
         socket
       else
         socket

@@ -27,6 +27,10 @@ defmodule Cafe.Stations do
     }
   }
 
+  def all_stations() do
+    get_seasons() ++ get_vibes()
+  end
+
   def get_seasons() do
     @stations[:seasons]
     |> Map.keys()
@@ -58,7 +62,8 @@ defmodule Cafe.Stations do
           end
 
         if video_id = Enum.at(stations, station_number) do
-          {:ok, %Station{video_id: video_id, position: station_number}}
+          {:ok,
+           %Station{name: Atom.to_string(sub_theme), video_id: video_id, position: station_number}}
         else
           {:error, :video_not_found}
         end

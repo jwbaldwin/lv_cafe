@@ -4,11 +4,14 @@ defmodule CafeWeb.ThemeSwitcher do
   alias Cafe.Stations
 
   def mount(socket) do
-    {:ok,
-     socket
-     |> assign(:open, false)
-     |> assign(:seasons, Stations.get_stations(Stations.get_seasons()))
-     |> assign(:vibes, Stations.get_stations(Stations.get_vibes()))}
+    socket =
+      socket
+      |> assign(:open, false)
+      |> assign(:seasons, Stations.get_stations(Stations.get_seasons()))
+      |> assign(:vibes, Stations.get_stations(Stations.get_vibes()))
+      |> assign(:listener_counts, CafeWeb.Presence.list_all_listener_counts())
+
+    {:ok, socket}
   end
 
   def handle_event("toggle_switcher", _params, socket) do
@@ -104,6 +107,8 @@ defmodule CafeWeb.ThemeSwitcher do
               />
               <span class="pt-2 text-xs text-white text-shadow-green">
                 {elem(season, 1).name}
+                <span class="inline-block w-1.5 h-1.5 ml-1.5 bg-red-400"></span>
+                {Map.get(@listener_counts, Atom.to_string(elem(season, 0)))}
               </span>
             </button>
             <button
@@ -126,6 +131,8 @@ defmodule CafeWeb.ThemeSwitcher do
               />
               <span class="pt-2 text-xs text-white text-shadow-green">
                 {elem(vibe, 1).name}
+                <span class="inline-block w-1.5 h-1.5 ml-1.5 bg-red-400"></span>
+                {Map.get(@listener_counts, Atom.to_string(elem(vibe, 0)))}
               </span>
             </button>
           </div>
