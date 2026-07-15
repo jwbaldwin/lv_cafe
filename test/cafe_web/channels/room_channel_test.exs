@@ -5,19 +5,13 @@ defmodule CafeWeb.RoomChannelTest do
     {:ok, _, socket} =
       CafeWeb.UserSocket
       |> socket("user_id", %{some: :assign})
-      |> subscribe_and_join(CafeWeb.RoomChannel, "room:lobby")
+      |> subscribe_and_join(CafeWeb.RoomChannel, "room:lobby", %{"name" => "test-user"})
 
     %{socket: socket}
   end
 
-  test "ping replies with status ok", %{socket: socket} do
-    ref = push(socket, "ping", %{"hello" => "there"})
-    assert_reply ref, :ok, %{"hello" => "there"}
-  end
-
-  test "shout broadcasts to room:lobby", %{socket: socket} do
-    push(socket, "shout", %{"hello" => "all"})
-    assert_broadcast "shout", %{"hello" => "all"}
+  test "joining sends the current presence state" do
+    assert_push "presence_state", %{"test-user" => _presence}
   end
 
   test "broadcasts are pushed to the client", %{socket: socket} do

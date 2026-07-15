@@ -13,6 +13,7 @@ defmodule Cafe.StationsTest do
              :christmas,
              :cozy,
              :locked_in,
+             :morning_coffee,
              :rainy_day
            ]
   end
@@ -20,14 +21,16 @@ defmodule Cafe.StationsTest do
   test "get_station/3 returns a station by theme and position" do
     assert {:ok,
             %Stations.Station{
+              name: "spring",
               position: 0,
-              video_id: "If_UO5D9SdU"
+              video_id: "ZMjdwYVmnog"
             }} == Stations.fetch_station(:seasons, :spring, 0)
 
     assert {:ok,
             %Stations.Station{
+              name: "blade_runner",
               position: 0,
-              video_id: "UDxVZ-_0KUw"
+              video_id: "4FhsjQ2xess"
             }} == Stations.fetch_station(:vibes, :blade_runner, 0)
   end
 
@@ -37,9 +40,12 @@ defmodule Cafe.StationsTest do
            } == Stations.get_stations([:autumn])
   end
 
-  test "get_get_unique_key_map_for_themes/1 returns a map of unique keys for each theme morning" do
-    assert %{
-             :autumn => %{char: "a", name: "[a]utumn"}
-           } == Stations.get_stations(Stations.get_seasons() ++ Stations.get_vibes())
+  test "get_stations/1 gives every station a unique shortcut" do
+    stations = Stations.get_stations(Stations.get_seasons() ++ Stations.get_vibes())
+
+    assert map_size(stations) == 10
+    assert stations.autumn == %{char: "a", name: "[a]utumn"}
+    assert stations.morning_coffee == %{char: "r", name: "mo[r]ning_coffee"}
+    assert stations |> Map.values() |> Enum.map(& &1.char) |> Enum.uniq() |> length() == 10
   end
 end

@@ -37,6 +37,7 @@ defmodule CafeWeb.Presence do
       Phoenix.PubSub.local_broadcast(Cafe.PubSub, "proxy:#{topic}", msg)
     end
 
+    Phoenix.PubSub.broadcast(Cafe.PubSub, "listeners", :listeners_changed)
     {:ok, state}
   end
 

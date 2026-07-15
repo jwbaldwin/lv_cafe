@@ -10,6 +10,10 @@ defmodule CafeWeb.RoomLive do
       |> assign(:info_panel, false)
       |> assign(:presences, 0)
       |> assign(:volume, 50)
+      |> assign(:playing, false)
+      |> assign(:muted, false)
+      |> assign(:listener_counts, %{})
+      |> assign(:failed_videos, MapSet.new())
       |> assign(:preferences, init_preferences(socket))
 
     socket =
@@ -19,8 +23,11 @@ defmodule CafeWeb.RoomLive do
         socket = assign(socket, :station, station)
         session_id = session["session_id"] || Ecto.UUID.generate()
         CafeWeb.Presence.track_user(station.name, session_id)
-        CafeWeb.Presence.subscribe(station.name)
+        Phoenix.PubSub.subscribe(Cafe.PubSub, "listeners")
+
         socket
+        |> assign(:session_id, session_id)
+        |> refresh_presence()
       else
         socket
       end
@@ -59,6 +66,7 @@ defmodule CafeWeb.RoomLive do
         <.live_component
           module={CafeWeb.ThemeSwitcher}
           preferences={@preferences}
+          listener_counts={@listener_counts}
           id="theme-switcher"
         />
         <.live_component module={CafeWeb.PomodoroTimer} id="pomodoro-timer" />
@@ -68,27 +76,22 @@ defmodule CafeWeb.RoomLive do
           title={@title}
           position={@station.position}
           volume={@volume}
+          playing={@playing}
+          muted={@muted}
           id="controls"
         />
         <div
-          class="yt-wrapper pt-32 px-12 pb-48"
+          class="yt-wrapper fixed inset-0 z-0 overflow-hidden bg-black"
           id="youtube-player-container"
+          phx-hook="YouTubePlayer"
+          data-video-id={@station.video_id}
           phx-update="ignore"
-          style="position: fixed; inset: 0px; display: flex; align-items: center; justify-content: center; z-index: 0; background: black;"
         >
-          <div style="width: 100%; height: 100%; overflow: hidden; display: flex; align-items: center; justify-content: center; border-radius: 8px;">
-            <div style="pointer-events: none; z-index: -1; border-radius: 8px; width: 100vw; height: 200vw;">
-              <div class="player-container w-full h-full">
-                <div class="player-container w-full h-full">
-                  <div
-                    id="youtube-player"
-                    phx-hook="YouTubePlayer"
-                    data-video-id={@station.video_id}
-                    class="w-full h-full"
-                  >
-                  </div>
-                </div>
-              </div>
+          <div class="pointer-events-none absolute left-1/2 top-1/2 aspect-video h-[56.25vw] min-h-full w-[177.78vh] min-w-full -translate-x-1/2 -translate-y-1/2">
+            <div
+              id="youtube-player"
+              class="h-full w-full"
+            >
             </div>
           </div>
         </div>
@@ -144,47 +147,107 @@ defmodule CafeWeb.RoomLive do
     """
   end
 
-  def handle_info({CafeWeb.Presence, {:join, _session_id}}, socket) do
-    {:noreply, update(socket, :presences, &(&1 + 1))}
-  end
+  def handle_info(:listeners_changed, socket), do: {:noreply, refresh_presence(socket)}
 
-  def handle_info({CafeWeb.Presence, {:leave, _session_id}}, socket) do
-    {:noreply, update(socket, :presences, &(&1 - 1))}
-  end
-
-  def handle_info({:change_video, position, current_volume}, socket) do
-    station = get_station(socket, position)
-
+  def handle_info({:change_video, position, _current_volume}, socket) do
     {:noreply,
      socket
-     |> push_event("changeVideo", %{video_id: station.video_id, volume: current_volume})
-     |> assign(:station, station)}
+     |> assign(:failed_videos, MapSet.new())
+     |> change_video(get_station(socket, position))}
   end
 
   def handle_info({:change_theme, theme, sub_theme}, socket) do
     socket = set_preference(socket, theme, sub_theme)
+    station = get_station(socket)
 
-    {:ok, station} =
-      Stations.fetch_station(
-        String.to_existing_atom(theme),
-        String.to_existing_atom(sub_theme),
-        0
-      )
+    if station.name != socket.assigns.station.name do
+      CafeWeb.Presence.untrack(self(), socket.assigns.station.name, socket.assigns.session_id)
+      CafeWeb.Presence.track_user(station.name, socket.assigns.session_id)
+    end
 
     {:noreply,
      socket
-     |> push_event("changeVideo", %{video_id: station.video_id, volume: socket.assigns.volume})}
+     |> assign(:failed_videos, MapSet.new())
+     |> change_video(station)
+     |> refresh_presence()}
   end
 
-  def handle_info({:volume_changed, volume}, socket) do
-    {:noreply, assign(socket, :volume, volume)}
+  defp refresh_presence(socket) do
+    counts = CafeWeb.Presence.list_all_listener_counts()
+
+    socket
+    |> assign(:listener_counts, counts)
+    |> assign(:presences, Map.get(counts, socket.assigns.station.name, 0))
+  end
+
+  defp change_video(socket, station) do
+    socket
+    |> assign(:station, station)
+    |> assign(:title, nil)
+    |> push_event("changeVideo", %{video_id: station.video_id, volume: socket.assigns.volume})
   end
 
   def handle_event("toggle_info_panel", _params, socket) do
     {:noreply, assign(socket, :info_panel, !socket.assigns.info_panel)}
   end
 
-  def handle_event("player_ready", %{"title" => title}, socket) do
-    {:noreply, assign(socket, :title, String.trim(title))}
+  def handle_event(
+        "player_state",
+        %{"playing" => playing, "muted" => muted, "volume" => volume},
+        socket
+      )
+      when is_boolean(playing) and is_boolean(muted) and is_number(volume) do
+    {:noreply,
+     assign(socket, playing: playing, muted: muted, volume: round(max(0, min(100, volume))))}
   end
+
+  def handle_event("player_ready", %{"video_id" => id, "title" => title}, socket)
+      when id == socket.assigns.station.video_id do
+    {:noreply, assign(socket, title: String.trim(title), failed_videos: MapSet.new())}
+  end
+
+  def handle_event("player_ready", _params, socket), do: {:noreply, socket}
+
+  def handle_event("player_status", %{"video_id" => id, "message" => message}, socket)
+      when id == socket.assigns.station.video_id do
+    {:noreply, assign(socket, :title, message)}
+  end
+
+  def handle_event("player_status", _params, socket), do: {:noreply, socket}
+
+  def handle_event("player_ended", %{"video_id" => id}, socket)
+      when id == socket.assigns.station.video_id do
+    {:noreply, change_video(socket, get_station(socket, socket.assigns.station.position + 1))}
+  end
+
+  def handle_event("player_ended", _params, socket), do: {:noreply, socket}
+
+  def handle_event("player_error", %{"video_id" => id}, socket)
+      when id == socket.assigns.station.video_id do
+    failed = MapSet.put(socket.assigns.failed_videos, id)
+    socket = assign(socket, :failed_videos, failed)
+
+    count =
+      Stations.station_count(
+        socket.assigns.preferences.theme,
+        socket.assigns.preferences.sub_theme
+      )
+
+    station =
+      Enum.find_value(1..count, fn offset ->
+        candidate = get_station(socket, socket.assigns.station.position + offset)
+        if !MapSet.member?(failed, candidate.video_id), do: candidate
+      end)
+
+    if station do
+      {:noreply, change_video(socket, station)}
+    else
+      {:noreply,
+       socket
+       |> assign(playing: false, title: "no videos available — try another vibe")
+       |> push_event("playerUnavailable", %{})}
+    end
+  end
+
+  def handle_event("player_error", _params, socket), do: {:noreply, socket}
 end

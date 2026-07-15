@@ -1,18 +1,23 @@
 # Cafe
 
-To start your Phoenix server:
+An ambient video cafe built with Phoenix LiveView.
 
-  * Run `mix setup` to install and setup dependencies
-  * Start Phoenix endpoint with `mix phx.server` or inside IEx with `iex -S mix phx.server`
+## Requirements
 
-Now you can visit [`localhost:4000`](http://localhost:4000) from your browser.
+- Erlang/OTP 29.0.3
+- Elixir 1.20.2
+- PostgreSQL 18.1
 
-Ready to run in production? Please [check our deployment guides](https://hexdocs.pm/phoenix/deployment.html).
+The exact local versions are recorded in `.tool-versions`. If PostgreSQL is not installed locally, start it with `docker compose up -d postgres`.
 
-## Learn more
+## Setup
 
-  * Official website: https://www.phoenixframework.org/
-  * Guides: https://hexdocs.pm/phoenix/overview.html
-  * Docs: https://hexdocs.pm/phoenix
-  * Forum: https://elixirforum.com/c/phoenix-forum
-  * Source: https://github.com/phoenixframework/phoenix
+1. Run `mix setup`.
+2. Start the endpoint with `mix phx.server` or `iex -S mix phx.server`.
+3. Visit [localhost:4000](http://localhost:4000).
+
+## Checks
+
+Run the same validation used by CI with `mix precommit`. Build production assets with `MIX_ENV=prod mix assets.deploy`.
+
+Pushes to `main` or `master` deploy to Fly only after formatting, compilation, tests, and the production asset build pass.

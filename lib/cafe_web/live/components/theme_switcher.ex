@@ -4,44 +4,31 @@ defmodule CafeWeb.ThemeSwitcher do
   alias Cafe.Stations
 
   def mount(socket) do
+    stations = Stations.get_stations(Stations.all_stations())
+
     socket =
       socket
-      |> assign(:open, false)
-      |> assign(:seasons, Stations.get_stations(Stations.get_seasons()))
-      |> assign(:vibes, Stations.get_stations(Stations.get_vibes()))
-      |> assign(:listener_counts, CafeWeb.Presence.list_all_listener_counts())
+      |> assign(:seasons, station_shortcuts(stations, Stations.get_seasons()))
+      |> assign(:vibes, station_shortcuts(stations, Stations.get_vibes()))
 
     {:ok, socket}
-  end
-
-  def handle_event("toggle_switcher", _params, socket) do
-    {:noreply, assign(socket, :open, !socket.assigns.open)}
   end
 
   def handle_event("select_theme", %{"theme" => theme, "sub_theme" => sub_theme}, socket) do
     select_theme(socket, theme, sub_theme)
   end
 
-  def handle_event("control_keypress", %{"key" => key} = params, socket) do
-    case key do
-      "t" -> {:noreply, assign(socket, :open, !socket.assigns.open)}
-      _theme_key -> select_theme(socket, params["theme"], params["sub_theme"])
-    end
-  end
-
   defp select_theme(socket, theme, sub_theme) do
     send(self(), {:change_theme, theme, sub_theme})
-    {:noreply, assign(socket, :open, false)}
+    {:noreply, socket}
   end
 
   def render(assigns) do
     ~H"""
-    <div id="themes" class="absolute top-8 right-20 z-[90]">
+    <div id="themes" phx-hook="ThemePicker" class="absolute top-8 right-20 z-[90]">
       <button
-        phx-click="toggle_switcher"
-        phx-window-keyup="control_keypress"
-        phx-key="t"
-        phx-target={@myself}
+        phx-click={toggle_picker()}
+        data-theme-picker-toggle
         class="p-2 text-white svg-shadow-red z-[90]"
       >
         <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -65,34 +52,21 @@ defmodule CafeWeb.ThemeSwitcher do
         </svg>
       </button>
       <div
-        :if={@open}
-        phx-click="toggle_switcher"
-        phx-target={@myself}
-        phx-mounted={
-          JS.transition(
-            {"ease-out duration-300", "opacity-0 scale-95 backdrop-blur-none",
-             "opacity-100 scale-100 backdrop-blur-sm"}
-          )
-        }
-        phx-remove={
-          JS.transition(
-            {"ease-in duration-200", "opacity-100 scale-100 backdrop-blur-sm",
-             "opacity-0 scale-95 backdrop-blur-none"}
-          )
-        }
-        class="fixed top-0 right-0 w-full h-full bg-black/50 backdrop-blur-sm origin-center"
+        id="theme-picker"
+        data-theme-picker
+        phx-click={hide_picker()}
+        class="fixed inset-0 hidden overflow-y-auto bg-black/80"
       >
-        <div class="flex flex-col items-center pt-20">
+        <div class="flex min-h-full flex-col items-center px-4 py-16 sm:px-8 sm:py-20">
           <h2 class="pb-4 text-base text-white text-shadow-green">
             pick a season or vibe
           </h2>
-          <div class="grid grid-cols-4 place-content-evenly gap-12">
+          <div class="grid grid-cols-2 place-content-center gap-4 sm:grid-cols-3 sm:gap-6 lg:grid-cols-5">
             <button
               :for={season <- @seasons}
               class="text-center group"
-              phx-click="select_theme"
-              phx-window-keyup="control_keypress"
-              phx-key={elem(season, 1).char}
+              phx-click={JS.push("select_theme") |> hide_picker()}
+              data-theme-key={elem(season, 1).char}
               phx-value-theme={:seasons}
               phx-value-sub_theme={elem(season, 0)}
               phx-target={@myself}
@@ -100,8 +74,9 @@ defmodule CafeWeb.ThemeSwitcher do
               <img
                 src={~p"/images/themes/seasons/#{elem(season, 0)}/thumbs/1.gif"}
                 alt={"#{elem(season, 0)} theme"}
+                decoding="async"
                 class={[
-                  "w-40 h-40 object-cover rounded-lg group-hover:ring-2 group-hover:ring-white/50",
+                  "h-28 w-28 rounded-lg object-cover group-hover:ring-2 group-hover:ring-white/50 sm:h-32 sm:w-32",
                   @preferences.sub_theme == elem(season, 0) && "ring-2 ring-green-500/80"
                 ]}
               />
@@ -114,9 +89,8 @@ defmodule CafeWeb.ThemeSwitcher do
             <button
               :for={vibe <- @vibes}
               class="text-center group"
-              phx-click="select_theme"
-              phx-window-keyup="control_keypress"
-              phx-key={elem(vibe, 1).char}
+              phx-click={JS.push("select_theme") |> hide_picker()}
+              data-theme-key={elem(vibe, 1).char}
               phx-value-theme={:vibes}
               phx-value-sub_theme={elem(vibe, 0)}
               phx-target={@myself}
@@ -124,8 +98,9 @@ defmodule CafeWeb.ThemeSwitcher do
               <img
                 src={~p"/images/themes/vibes/#{elem(vibe, 0)}/thumbs/1.gif"}
                 alt={"#{elem(vibe, 0)} theme"}
+                decoding="async"
                 class={[
-                  "w-40 h-40 object-cover rounded-lg group-hover:ring-2 group-hover:ring-white/50",
+                  "h-28 w-28 rounded-lg object-cover group-hover:ring-2 group-hover:ring-white/50 sm:h-32 sm:w-32",
                   @preferences.sub_theme == elem(vibe, 0) && "ring-2 ring-green-500/80"
                 ]}
               />
@@ -140,5 +115,25 @@ defmodule CafeWeb.ThemeSwitcher do
       </div>
     </div>
     """
+  end
+
+  defp toggle_picker(js \\ %JS{}) do
+    JS.toggle(js,
+      to: "#theme-picker",
+      in: {"ease-out duration-100", "opacity-0", "opacity-100"},
+      out: {"ease-in duration-100", "opacity-100", "opacity-0"}
+    )
+  end
+
+  defp hide_picker(js \\ %JS{}) do
+    JS.hide(js,
+      to: "#theme-picker",
+      time: 100,
+      transition: {"ease-in duration-100", "opacity-100", "opacity-0"}
+    )
+  end
+
+  defp station_shortcuts(stations, names) do
+    Enum.map(names, &{&1, Map.fetch!(stations, &1)})
   end
 end

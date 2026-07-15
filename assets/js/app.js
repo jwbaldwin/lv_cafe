@@ -23,10 +23,12 @@ import { LiveSocket } from "phoenix_live_view";
 import topbar from "../vendor/topbar";
 import YouTubePlayer from "./hooks/youtube_player.js";
 import Preferences from "./hooks/preferences.js";
+import ThemePicker from "./hooks/theme_picker.js";
 
 let Hooks = {
   YouTubePlayer: YouTubePlayer,
   Preferences: Preferences,
+  ThemePicker: ThemePicker,
 };
 
 let csrfToken = document

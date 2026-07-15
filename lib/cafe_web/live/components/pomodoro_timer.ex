@@ -50,7 +50,7 @@ defmodule CafeWeb.PomodoroTimer do
     end
   end
 
-  def update(assigns, socket) do
+  def update(%{update: :tick}, socket) do
     assigns = socket.assigns
 
     if socket.assigns.timer_state == :running do
@@ -85,6 +85,8 @@ defmodule CafeWeb.PomodoroTimer do
       {:ok, socket}
     end
   end
+
+  def update(assigns, socket), do: {:ok, assign(socket, assigns)}
 
   defp format_time(seconds) do
     minutes = div(seconds, 60)

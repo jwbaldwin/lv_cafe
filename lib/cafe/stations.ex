@@ -9,21 +9,22 @@ defmodule Cafe.Stations do
 
   # Mute, toggle themes, pause/play, navigation, and volume controls are reserved for the UI
   @global_keys ["p", "m", "t", " ", "ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown"]
+  @seasons [:spring, :summer, :autumn, :winter]
 
   @stations %{
     seasons: %{
-      spring: ["If_UO5D9SdU", "hN5bD_dV20g"],
-      summer: ["U537141YqTI", "8-BsxrE1bY8"],
-      autumn: ["zFXNZNKxDvs", "99PHofIMRaU", "Vg13S-zzol0", "pa6CyLN3wPY"],
-      winter: ["C5Jrme_XWyA", "HNCgEbZN65s"]
+      spring: ["ZMjdwYVmnog", "hODhrZlpcgo", "aP139Pah2c8"],
+      summer: ["NWw1ZuDIjlw", "gUbNlN_SqpE", "-VjOjBLpMws"],
+      autumn: ["pa6CyLN3wPY", "X59TpY0qtHE", "hrd0MSGc2Lk"],
+      winter: ["XVSL1DgGGiw", "tONVgIvdk0A", "S-4hwfyK-XQ"]
     },
     vibes: %{
-      blade_runner: ["UDxVZ-_0KUw", "-sZqtdT-GVw", "S7i3ugniyjg", "A4kU-LiaXiE"],
-      christmas: ["UGzTkPauX8U", "grQl_OaN2BQ"],
-      cozy: ["jfKfPfyJRdk", "ySEqsRMPjz8"],
-      locked_in: ["OvM7WAzfBHs", "Yd7vDterctQ", "6rvv8bU3pKA"],
-      rainy_day: ["ifptFpMbcn4", "DEWzT1geuPU"],
-      morning_coffee: ["GRSTnYTpDw8", "Rs0EOzsJPU0"]
+      blade_runner: ["4FhsjQ2xess", "XB0e7pI3Q8I", "svS19DWJ5t4"],
+      christmas: ["qwdzIECTqn8", "wQwqjzdwIyw", "Rnx08JFs6nQ"],
+      cozy: ["tIMtzkZ93gg", "s6XIt0vUq6A", "AUT4ZdXi37s"],
+      locked_in: ["00fOyOzuSfM", "EN0A5derVo0", "9M4jZuqdw04"],
+      rainy_day: ["DEWzT1geuPU", "3u0wlqe8lVk", "lCrqRhCt-oM"],
+      morning_coffee: ["3E0iUbAnCsM", "337OKHV3BRI", "1fueZCTYkpA"]
     }
   }
 
@@ -32,14 +33,22 @@ defmodule Cafe.Stations do
   end
 
   def get_seasons() do
-    @stations[:seasons]
-    |> Map.keys()
+    @seasons
   end
 
   def get_vibes() do
     @stations[:vibes]
     |> Map.keys()
     |> Enum.sort()
+  end
+
+  def station_count(theme, sub_theme) do
+    @stations
+    |> get_in([theme, sub_theme])
+    |> case do
+      stations when is_list(stations) -> length(stations)
+      nil -> 0
+    end
   end
 
   @doc """

@@ -12,8 +12,6 @@ defmodule Cafe.Application do
       Cafe.Repo,
       {DNSCluster, query: Application.get_env(:cafe, :dns_cluster_query) || :ignore},
       {Phoenix.PubSub, name: Cafe.PubSub},
-      # Start the Finch HTTP client for sending emails
-      {Finch, name: Cafe.Finch},
       # Start a worker by calling: Cafe.Worker.start_link(arg)
       # {Cafe.Worker, arg},
       # Start to serve requests, typically the last entry

@@ -1,23 +1,13 @@
 defmodule CafeWeb.Components.PlayerControls do
   use CafeWeb, :live_component
 
-  def mount(socket) do
-    {:ok,
-     socket
-     |> assign(:playing, true)
-     |> assign(:muted, true)}
-  end
-
   def render(assigns) do
     ~H"""
     <div class="absolute bottom-0 left-0 w-full py-8 px-12 z-[2]">
       <div class="flex items-center">
         <%= if @playing do %>
           <button
-            phx-click="pause"
-            phx-window-keyup="control_keypress"
-            phx-key=" "
-            phx-target={@myself}
+            data-player-action="toggle"
             class="px-4 py-2 text-white hover:text-shadow-green text-shadow-green"
           >
             <svg
@@ -38,10 +28,7 @@ defmodule CafeWeb.Components.PlayerControls do
           </button>
         <% else %>
           <button
-            phx-click="play"
-            phx-window-keyup="control_keypress"
-            phx-key=" "
-            phx-target={@myself}
+            data-player-action="toggle"
             class="px-4 py-2 text-white hover:text-shadow-green text-shadow-green"
           >
             <svg
@@ -103,17 +90,9 @@ defmodule CafeWeb.Components.PlayerControls do
             </svg>
           </button>
         </div>
-        <div
-          class="volume-buttons px-2"
-          phx-window-keyup="control_keypress"
-          phx-key="ArrowDown"
-          phx-target={@myself}
-        >
+        <div class="volume-buttons px-2">
           <div
             id={"volume-bar-#{@id}"}
-            phx-window-keyup="control_keypress"
-            phx-key="ArrowUp"
-            phx-target={@myself}
             class="flex gap-1 p-1 select-none cursor-pointer"
           >
             <%= for block <- 1..10 do %>
@@ -125,9 +104,8 @@ defmodule CafeWeb.Components.PlayerControls do
                     else: "bg-green-800/50"
                   )
                 ]}
-                phx-click="set_volume"
-                phx-value-volume={block * 10}
-                phx-target={@myself}
+                data-player-action="volume"
+                data-volume={block * 10}
               >
               </div>
             <% end %>
@@ -135,10 +113,7 @@ defmodule CafeWeb.Components.PlayerControls do
         </div>
         <div class="mute-buttons px-2">
           <button
-            phx-click="mute"
-            phx-window-keyup="control_keypress"
-            phx-key="m"
-            phx-target={@myself}
+            data-player-action="mute"
             class="px-2 py-2 text-white hover:text-shadow-green text-shadow-green"
           >
             <svg
@@ -174,72 +149,19 @@ defmodule CafeWeb.Components.PlayerControls do
     """
   end
 
-  def handle_event("play", _params, socket) do
-    toggle_video(socket)
-  end
-
-  def handle_event("pause", _params, socket) do
-    toggle_video(socket)
-  end
-
-  def handle_event("mute", %{"value" => ""}, socket) do
-    toggle_mute(socket)
-  end
-
-  def handle_event("next_station", _params, socket) do
-    change_station(socket, 1)
-  end
-
-  def handle_event("prev_station", _params, socket) do
-    change_station(socket, -1)
-  end
-
-  def handle_event("set_volume", %{"volume" => volume}, socket) do
-    change_volume(socket, {:to, String.to_integer(volume)})
-  end
+  def handle_event("next_station", _params, socket), do: change_station(socket, 1)
+  def handle_event("prev_station", _params, socket), do: change_station(socket, -1)
 
   def handle_event("control_keypress", %{"key" => key}, socket) do
     case key do
-      " " -> toggle_video(socket)
-      "m" -> toggle_mute(socket)
       "ArrowLeft" -> change_station(socket, -1)
       "ArrowRight" -> change_station(socket, 1)
-      "ArrowUp" -> change_volume(socket, {:by, 10})
-      "ArrowDown" -> change_volume(socket, {:by, -10})
       _ -> {:noreply, socket}
     end
-  end
-
-  defp toggle_video(socket) do
-    case socket.assigns.playing do
-      true -> {:noreply, push_event(socket, "pauseVideo", %{}) |> assign(:playing, false)}
-      false -> {:noreply, push_event(socket, "playVideo", %{}) |> assign(:playing, true)}
-    end
-  end
-
-  defp toggle_mute(socket) do
-    {:noreply,
-     socket
-     |> push_event("toggleMute", %{})
-     |> assign(:muted, !socket.assigns.muted)}
   end
 
   defp change_station(socket, direction) do
     send(self(), {:change_video, socket.assigns.position + direction, socket.assigns.volume})
     {:noreply, socket}
-  end
-
-  defp change_volume(socket, {:by, amount}) do
-    new_volume = max(0, min(100, socket.assigns.volume + amount))
-    change_volume(socket, {:to, new_volume})
-  end
-
-  defp change_volume(socket, {:to, new_volume}) do
-    send(self(), {:volume_changed, new_volume})
-
-    {:noreply,
-     socket
-     |> push_event("setVolume", %{volume: new_volume})
-     |> assign(:muted, false)}
   end
 end
