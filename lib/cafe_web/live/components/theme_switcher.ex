@@ -28,6 +28,7 @@ defmodule CafeWeb.ThemeSwitcher do
     <div id="themes" phx-hook="ThemePicker" class="absolute top-8 right-20 z-[90]">
       <button
         phx-click={toggle_picker()}
+        id="theme-picker-toggle"
         data-theme-picker-toggle
         class="p-2 text-white svg-shadow-red z-[90]"
       >
@@ -64,9 +65,11 @@ defmodule CafeWeb.ThemeSwitcher do
           <div class="grid grid-cols-2 place-content-center gap-4 sm:grid-cols-3 sm:gap-6 lg:grid-cols-5">
             <button
               :for={season <- @seasons}
+              id={"theme-#{elem(season, 0)}"}
               class="text-center group"
               phx-click={JS.push("select_theme") |> hide_picker()}
               data-theme-key={elem(season, 1).char}
+              data-theme-selected={to_string(@preferences.sub_theme == elem(season, 0))}
               phx-value-theme={:seasons}
               phx-value-sub_theme={elem(season, 0)}
               phx-target={@myself}
@@ -88,9 +91,11 @@ defmodule CafeWeb.ThemeSwitcher do
             </button>
             <button
               :for={vibe <- @vibes}
+              id={"theme-#{elem(vibe, 0)}"}
               class="text-center group"
               phx-click={JS.push("select_theme") |> hide_picker()}
               data-theme-key={elem(vibe, 1).char}
+              data-theme-selected={to_string(@preferences.sub_theme == elem(vibe, 0))}
               phx-value-theme={:vibes}
               phx-value-sub_theme={elem(vibe, 0)}
               phx-target={@myself}

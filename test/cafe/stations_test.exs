@@ -44,6 +44,8 @@ defmodule Cafe.StationsTest do
     stations = Stations.get_stations(Stations.get_seasons() ++ Stations.get_vibes())
 
     assert map_size(stations) == 10
+    assert stations.locked_in == %{char: "e", name: "lock[e]d_in"}
+    refute Enum.any?(Map.values(stations), &(&1.char in ~w(h j k l p m t)))
     assert stations.autumn == %{char: "a", name: "[a]utumn"}
     assert stations.morning_coffee == %{char: "r", name: "mo[r]ning_coffee"}
     assert stations |> Map.values() |> Enum.map(& &1.char) |> Enum.uniq() |> length() == 10
