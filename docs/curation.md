@@ -16,9 +16,10 @@ Open `/admin` from any browser or device using the deployed site, then sign in. 
 - Save verified title, live status, and recording duration after the preview actually plays and advances.
 - Add, remove, reorder, and edit video settings. Saves update Postgres immediately; no deploy is needed.
 - Leave private notes attached to a video, including notes about videos later removed.
-- Review, dismiss, or reopen submissions and save private review notes.
-- Add a submitted video to a chosen playlist and mark the submission reviewed in one database transaction.
-- Copy the current inbox view as text for Codex (latest 200 matching submissions).
+- Include feedback for Codex, or dismiss it without deleting it. Decisions are saved across browsers.
+- Copy all included feedback as one text block, with the playing video, theme, source, and timestamp. The current filter and the 200-item display limit do not limit the export. Copying keeps the selection intact.
+
+The inbox has New, Included for Codex, Dismissed, and All filters. Older reviewed items appear under New until explicitly included or dismissed. Video links in metadata identify what was playing; visitors can suggest a different video by pasting a link into their message.
 
 New theme suggestions are inbox items. Creating a new playable theme still requires its visuals/effects and keyboard mapping to be implemented.
 

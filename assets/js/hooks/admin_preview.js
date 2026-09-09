@@ -1,6 +1,7 @@
 const AdminPreview = {
   mounted() {
     this.disposed = false;
+    this.handleEvent('pause_preview', () => { this.current = null; clearTimeout(this.sample); this.player?.pauseVideo?.(); this.status('Select Preview on a video to listen here.'); });
     this.status = text => { this.el.querySelector('[data-preview-status]').textContent = text; };
     this.handleEvent('preview_video', video => {
       this.current = video;
@@ -46,7 +47,7 @@ const AdminPreview = {
       },
     });
   },
-  load() { this.player.loadVideoById({ videoId: this.current.video_id, startSeconds: this.current.start_seconds }); },
+  load() { if (this.current) this.player.loadVideoById({ videoId: this.current.video_id, startSeconds: this.current.start_seconds }); },
   destroyed() {
     this.disposed = true;
     clearTimeout(this.sample);

@@ -28,7 +28,7 @@ defmodule Cafe.Curation.Feedback do
     feedback
     |> cast(attrs, [:status, :admin_note])
     |> validate_required([:status])
-    |> validate_inclusion(:status, ~w(open reviewed dismissed))
+    |> validate_inclusion(:status, ~w(open reviewed included dismissed))
     |> validate_length(:admin_note, max: 4000)
   end
 end

@@ -11,10 +11,22 @@ defmodule CafeWeb.AdminLive do
     playlist = Curation.get_playlist(params["theme"] || "cozy") || hd(Curation.list_playlists())
 
     status =
-      if params["status"] in ~w(open reviewed dismissed all), do: params["status"], else: "open"
+      if params["status"] in ~w(open included dismissed all), do: params["status"], else: "open"
+
+    view = if params["view"] == "inbox", do: "inbox", else: "playlists"
 
     {:noreply,
-     assign(socket, playlist: playlist, status: status, feedback: Curation.list_feedback(status))}
+     socket
+     |> assign(
+       playlist: playlist,
+       status: status,
+       view: view,
+       preview_id: nil,
+       verification: nil,
+       feedback: Curation.list_feedback(status),
+       included_feedback: Curation.feedback_for_codex()
+     )
+     |> push_event("pause_preview", %{})}
   end
 
   def handle_event("select", %{"theme" => theme}, socket) do
@@ -23,7 +35,9 @@ defmodule CafeWeb.AdminLive do
 
   def handle_event("filter", %{"status" => status}, socket) do
     {:noreply,
-     push_patch(socket, to: ~p"/admin?theme=#{socket.assigns.playlist.name}&status=#{status}")}
+     push_patch(socket,
+       to: ~p"/admin?view=inbox&theme=#{socket.assigns.playlist.name}&status=#{status}"
+     )}
   end
 
   def handle_event("add", %{"url" => url}, socket),
@@ -111,6 +125,7 @@ defmodule CafeWeb.AdminLive do
         {:noreply,
          socket
          |> assign(:feedback, Curation.list_feedback(socket.assigns.status))
+         |> assign(:included_feedback, Curation.feedback_for_codex())
          |> put_flash(:info, "Your note is saved in the inbox.")}
 
       {:error, _} ->
@@ -118,39 +133,18 @@ defmodule CafeWeb.AdminLive do
     end
   end
 
-  def handle_event("review", %{"_id" => id, "review" => attrs}, socket) do
-    case Curation.review_feedback(id, attrs) do
+  def handle_event("feedback_status", %{"id" => id, "status" => status}, socket)
+      when status in ~w(open included dismissed) do
+    case Curation.review_feedback(id, %{"status" => status}) do
       {:ok, _} ->
         {:noreply,
          socket
          |> assign(:feedback, Curation.list_feedback(socket.assigns.status))
-         |> put_flash(:info, "Review saved.")}
+         |> assign(:included_feedback, Curation.feedback_for_codex())
+         |> clear_flash(:info)}
 
       {:error, _} ->
-        {:noreply, put_flash(socket, :error, "Could not save that review.")}
-    end
-  end
-
-  def handle_event("accept", %{"_id" => id, "theme" => theme}, socket) do
-    result = Curation.accept_suggestion(id, Curation.get_playlist!(theme))
-
-    case result do
-      {:ok, _} ->
-        {:noreply,
-         socket
-         |> assign(
-           playlist: Curation.get_playlist!(socket.assigns.playlist.name),
-           feedback: Curation.list_feedback(socket.assigns.status)
-         )
-         |> put_flash(:info, "Video added; suggestion marked reviewed.")}
-
-      {:error, _} ->
-        {:noreply,
-         put_flash(
-           socket,
-           :error,
-           "Could not add this video. It may already be in that playlist."
-         )}
+        {:noreply, put_flash(socket, :error, "Could not update this feedback.")}
     end
   end
 
@@ -158,6 +152,7 @@ defmodule CafeWeb.AdminLive do
     {:noreply,
      socket
      |> assign(:playlist, playlist)
+     |> assign(:playlists, Curation.list_playlists())
      |> put_flash(:info, "Saved. The playlist is updated for listeners.")
      |> clear_flash(:error)}
   end
@@ -184,11 +179,20 @@ defmodule CafeWeb.AdminLive do
      |> put_flash(:error, message)}
   end
 
+  defp feedback_status_label("included"), do: "Included for Codex"
+  defp feedback_status_label("dismissed"), do: "Dismissed"
+  defp feedback_status_label("all"), do: "All"
+  defp feedback_status_label(_), do: "New"
+
   defp feedback_text(entries) do
     Enum.map_join(entries, "\n\n", fn f ->
-      "## #{f.playlist_name || "General"} · #{f.kind} · #{f.source} · #{f.status}\n" <>
-        if(f.video_id, do: "https://www.youtube.com/watch?v=#{f.video_id}\n", else: "") <>
-        f.message <> if(f.admin_note, do: "\nReview: #{f.admin_note}", else: "")
+      "## Feedback on #{f.playlist_name || "General"}\n" <>
+        "From: #{f.source}\nSent: #{DateTime.to_iso8601(f.inserted_at)}\n" <>
+        if(f.video_id,
+          do: "Playing video: https://www.youtube.com/watch?v=#{f.video_id}\n",
+          else: ""
+        ) <>
+        "\n#{f.message}"
     end)
   end
 
@@ -196,184 +200,287 @@ defmodule CafeWeb.AdminLive do
     ~H"""
     <main class="curation-shell">
       <header class="curation-header">
-        <div>
-          <a href="/">← Vibes</a><h1>Your playlists & inbox</h1><p>
-            Edits are saved to the app’s database and take effect immediately.
-          </p>
-        </div>
-        <.form for={%{}} action="/admin/logout" method="delete"><button>Sign out</button></.form>
-      </header>
-      <p :if={Phoenix.Flash.get(@flash, :info)} role="status">{Phoenix.Flash.get(@flash, :info)}</p>
-      <p :if={Phoenix.Flash.get(@flash, :error)} role="alert">{Phoenix.Flash.get(@flash, :error)}</p>
-      <div class="curation-columns">
-        <section>
-          <.form for={%{}} phx-change="select" id="theme-select">
-            <label>Theme<select name="theme"><option
-              :for={p <- @playlists}
-              value={p.name}
-              selected={p.name == @playlist.name}
-            >
-              {String.replace(p.name, "_", " ")}
-            </option></select></label>
-          </.form>
-          <article
-            :for={{video, index} <- Enum.with_index(@playlist.videos)}
-            class="curation-card"
-            id={"video-#{video.video_id}"}
+        <a href="/" class="curation-brand">Vibes <span> / Admin</span></a>
+        <div class="curation-header-actions">
+          <a href="/" target="_blank" rel="noopener">Open player ↗</a><.form
+            for={%{}}
+            action="/admin/logout"
+            method="delete"
           >
-            <div class="curation-video-heading">
-              <img
-                src={"https://i.ytimg.com/vi/#{video.video_id}/mqdefault.jpg"}
-                alt={video.title || video.video_id}
-                loading="lazy"
-              />
-              <div>
-                <h2>{video.title || video.video_id}</h2><small>{index + 1}/{length(@playlist.videos)} · {if video.live,
-                  do: "Live at last check",
-                  else:
-                    if(video.verified_at, do: "Recording · embed checked", else: "Not yet verified")}</small>
-              </div>
-            </div>
-            <div class="curation-actions">
-              <button phx-click="preview" phx-value-id={video.video_id}>Preview</button>
-              <button
-                phx-click="move"
-                phx-value-id={video.video_id}
-                phx-value-direction="-1"
-                disabled={index == 0}
-                aria-label="Move up"
-              >↑</button>
-              <button
-                phx-click="move"
-                phx-value-id={video.video_id}
-                phx-value-direction="1"
-                disabled={index == length(@playlist.videos) - 1}
-                aria-label="Move down"
-              >↓</button>
-              <button
-                phx-click="remove"
-                phx-value-id={video.video_id}
-                disabled={length(@playlist.videos) == 1}
-              >Remove</button>
-              <a
-                href={"https://www.youtube.com/watch?v=#{video.video_id}"}
-                target="_blank"
-                rel="noopener"
-              >YouTube ↗</a>
-            </div>
-            <details>
-              <summary>Edit video settings</summary>
-              <.form for={%{}} phx-submit="save_video" id={"settings-#{video.video_id}"}>
-                <input type="hidden" name="_id" value={video.video_id} />
-                <label>Title<input name="video[title]" value={video.title} maxlength="500" /></label>
-                <div class="curation-settings">
-                  <label>Intro offset (seconds)<input
-                    type="number"
-                    min="0"
-                    name="video[start_seconds]"
-                    value={video.start_seconds}
-                  /></label>
-                  <label>Duration (seconds)<input
-                    type="number"
-                    min="0"
-                    name="video[duration_seconds]"
-                    value={video.duration_seconds}
-                  /></label>
-                </div>
-                <label><input type="hidden" name="video[tune_in]" value="false" /><input
-                  type="checkbox"
-                  name="video[tune_in]"
-                  value="true"
-                  checked={video.tune_in}
-                  disabled={video.live}
-                /> Join recording in progress</label>
-                <button type="submit">Save settings</button>
-              </.form>
-            </details>
-            <details>
-              <summary>Leave myself feedback</summary>
-              <.form for={%{}} phx-submit="note" id={"note-#{video.video_id}"}>
-                <input type="hidden" name="_id" value={video.video_id} />
-                <label>What should change?<textarea
-                  name="message"
-                  required
-                  minlength="3"
-                  maxlength="4000"
-                ></textarea></label>
-                <button type="submit">Save to inbox</button>
-              </.form>
-            </details>
-          </article>
-          <.form for={%{}} phx-submit="add" id="add-video" class="curation-card">
-            <h2>Add a video</h2><label>YouTube link or ID<input name="url" required /></label><button type="submit">Add to playlist</button>
+            <button>Sign out</button>
           </.form>
-        </section>
-        <section>
-          <div id="admin-preview" phx-hook="AdminPreview" phx-update="ignore" class="curation-card">
-            <div id="admin-player"></div><p data-preview-status>
-              Select Preview to play and verify a video.
+        </div>
+      </header>
+      <nav class="curation-tabs" aria-label="Admin sections">
+        <.link
+          patch={~p"/admin?view=playlists&theme=#{@playlist.name}&status=#{@status}"}
+          aria-current={if @view == "playlists", do: "page"}
+        >Playlists</.link>
+        <.link
+          patch={~p"/admin?view=inbox&theme=#{@playlist.name}&status=#{@status}"}
+          aria-current={if @view == "inbox", do: "page"}
+        >Inbox</.link>
+      </nav>
+      <p :if={Phoenix.Flash.get(@flash, :info)} class="curation-notice" role="status">
+        {Phoenix.Flash.get(@flash, :info)}
+      </p>
+      <p :if={Phoenix.Flash.get(@flash, :error)} class="curation-notice curation-error" role="alert">
+        {Phoenix.Flash.get(@flash, :error)}
+      </p>
+      <section hidden={@view != "playlists"} aria-label="Playlists">
+        <div class="curation-page-heading">
+          <div>
+            <h1>Playlists</h1><p>Choose a theme, listen, and fine-tune the lineup.</p>
+          </div><span class="curation-status">Changes go live when saved</span>
+        </div>
+        <div class="curation-workspace">
+          <aside class="curation-sidebar">
+            <h2>Themes</h2>
+            <nav aria-label="Playlist themes">
+              <.link
+                :for={p <- @playlists}
+                patch={~p"/admin?view=playlists&theme=#{p.name}&status=#{@status}"}
+                aria-current={if p.name == @playlist.name, do: "page"}
+              >
+                <span>{String.replace(p.name, "_", " ")}</span><span>{length(
+                  if p.name == @playlist.name, do: @playlist.videos, else: p.videos
+                )}</span>
+              </.link>
+            </nav>
+          </aside>
+          <section class="curation-playlist" aria-label="Selected playlist">
+            <div class="curation-section-heading">
+              <h2>{String.replace(@playlist.name, "_", " ")}</h2><span>{length(@playlist.videos)} videos · playback order</span>
+            </div>
+            <details class="curation-add">
+              <summary>+ Add a video</summary>
+              <.form for={%{}} phx-submit="add" id="add-video">
+                <label>YouTube link or ID<input
+                  name="url"
+                  type="text"
+                  placeholder="https://youtube.com/watch?v=…"
+                  required
+                /></label><button type="submit" class="curation-primary">Add to playlist</button>
+              </.form>
+            </details>
+            <.video_card
+              :for={{video, index} <- Enum.with_index(@playlist.videos)}
+              video={video}
+              index={index}
+              playlist={@playlist}
+              preview_id={@preview_id}
+            />
+          </section>
+          <aside class="curation-preview-column" aria-label="Video preview">
+            <h2>Preview</h2>
+            <p>Play a video to check that it still works.</p>
+            <div
+              id="admin-preview"
+              phx-hook="AdminPreview"
+              phx-update="ignore"
+              class="curation-preview-player"
+            >
+              <div id="admin-player"></div><p data-preview-status>
+                Select Preview on a video to listen here.
+              </p>
+            </div>
+            <div :if={@verification} class="curation-verification">
+              <strong>Playback checked</strong><p>
+                {if @verification["live"], do: "This is a live stream.", else: "This is a recording."} Save to update its title and playback details.
+              </p><button phx-click="save_verification" class="curation-primary">Save checked details</button>
+            </div>
+          </aside>
+        </div>
+      </section>
+      <section hidden={@view != "inbox"} class="curation-inbox" aria-label="Feedback inbox">
+        <div class="curation-page-heading">
+          <div>
+            <h1>Inbox</h1><p>
+              Include feedback for your next Codex session, or dismiss it.
             </p>
           </div>
-          <p :if={@verification}>
-            Embed played and advanced. {if @verification["live"],
-              do: "Live stream detected.",
-              else: "Recording duration detected."}
-          </p>
-          <button :if={@verification} phx-click="save_verification">Save verification</button>
-          <h2 class="curation-inbox-title">Suggestions inbox</h2>
+        </div>
+        <div class="curation-inbox-toolbar">
           <.form for={%{}} phx-change="filter" id="inbox-filter">
-            <label>Show<select name="status"><option
-              :for={status <- ~w(open reviewed dismissed all)}
+            <label>Status<select name="status"><option
+              :for={status <- ~w(open included dismissed all)}
               value={status}
               selected={status == @status}
             >
-              {status}
+              {feedback_status_label(status)}
             </option></select></label>
           </.form>
-          <p :if={@feedback == []}>No submissions here yet.</p>
-          <article :for={entry <- @feedback} id={"feedback-#{entry.id}"} class="curation-card">
-            <small>{entry.source} · {entry.kind} · {entry.playlist_name || "General"} · {entry.inserted_at}</small>
-            <p class="curation-message">{entry.message}</p>
+          <span>{length(@feedback)} {if length(@feedback) == 1, do: "item", else: "items"}</span>
+          <button type="button" data-copy-inbox disabled={@included_feedback == []}>Copy for Codex ({length(
+            @included_feedback
+          )})</button>
+          <textarea
+            id="inbox-export"
+            class="sr-only"
+            readonly
+            aria-label="Inbox export"
+          >{feedback_text(@included_feedback)}</textarea>
+        </div>
+        <div :if={@feedback == []} class="curation-empty">
+          <h2>{if @status == "open", do: "All caught up", else: "No feedback here"}</h2><p>
+            Suggestions sent from the player will appear here for you to review.
+          </p>
+        </div>
+        <.feedback_card
+          :for={entry <- @feedback}
+          entry={entry}
+        />
+        <p :if={length(@feedback) == 200} class="curation-limit">
+          Showing the latest 200 matching submissions.
+        </p>
+      </section>
+    </main>
+    """
+  end
+
+  defp video_card(assigns) do
+    ~H"""
+    <article
+      class="curation-card curation-video-card"
+      id={"video-#{@video.video_id}"}
+    >
+      <div class="curation-video-heading">
+        <img
+          src={"https://i.ytimg.com/vi/#{@video.video_id}/mqdefault.jpg"}
+          alt=""
+          loading="lazy"
+        />
+        <div>
+          <h3>{@video.title || @video.video_id}</h3><small>{@index + 1}/{length(@playlist.videos)} · {if @video.live,
+            do: "Live at last check",
+            else: if(@video.verified_at, do: "Recording · embed checked", else: "Not yet verified")}</small>
+        </div>
+      </div>
+      <div class="curation-actions">
+        <button
+          phx-click="preview"
+          phx-value-id={@video.video_id}
+          class="curation-primary"
+          aria-pressed={@preview_id == @video.video_id}
+        >Preview</button>
+        <a
+          href={"https://www.youtube.com/watch?v=#{@video.video_id}"}
+          target="_blank"
+          rel="noopener"
+        >YouTube ↗</a>
+      </div>
+      <details>
+        <summary>Video settings & order</summary>
+        <div class="curation-actions">
+          <button
+            phx-click="move"
+            phx-value-id={@video.video_id}
+            phx-value-direction="-1"
+            disabled={@index == 0}
+            aria-label="Move up"
+          >↑</button>
+          <button
+            phx-click="move"
+            phx-value-id={@video.video_id}
+            phx-value-direction="1"
+            disabled={@index == length(@playlist.videos) - 1}
+            aria-label="Move down"
+          >↓</button>
+          <button
+            phx-click="remove"
+            phx-value-id={@video.video_id}
+            disabled={length(@playlist.videos) == 1}
+            class="curation-danger"
+          >Remove from playlist</button>
+        </div>
+        <.form for={%{}} phx-submit="save_video" id={"settings-#{@video.video_id}"}>
+          <input type="hidden" name="_id" value={@video.video_id} />
+          <label>Title<input name="video[title]" value={@video.title} maxlength="500" /></label>
+          <div class="curation-settings">
+            <label>Skip intro · seconds<input
+              type="number"
+              min="0"
+              name="video[start_seconds]"
+              value={@video.start_seconds}
+            /></label>
+            <label>Video length · seconds<input
+              type="number"
+              min="0"
+              name="video[duration_seconds]"
+              value={@video.duration_seconds}
+            /></label>
+          </div>
+          <label><input type="hidden" name="video[tune_in]" value="false" /><input
+            type="checkbox"
+            name="video[tune_in]"
+            value="true"
+            checked={@video.tune_in}
+            disabled={@video.live}
+          /> Join recording in progress</label>
+          <button type="submit">Save settings</button>
+        </.form>
+      </details>
+      <details>
+        <summary>Leave a note</summary>
+        <.form for={%{}} phx-submit="note" id={"note-#{@video.video_id}"}>
+          <input type="hidden" name="_id" value={@video.video_id} />
+          <label>What should change?<textarea
+            name="message"
+            required
+            minlength="3"
+            maxlength="4000"
+          ></textarea></label>
+          <button type="submit">Save to inbox</button>
+        </.form>
+      </details>
+    </article>
+    """
+  end
+
+  defp feedback_card(assigns) do
+    ~H"""
+    <article id={"feedback-#{@entry.id}"} class="curation-card">
+      <div class="curation-feedback-meta">
+        <span>{if @entry.source == "admin", do: "Your note", else: "Listener feedback"}</span>
+        <span>{feedback_status_label(@entry.status)}</span>
+      </div>
+      <p class="curation-message">{@entry.message}</p>
+      <div class="curation-feedback-context">
+        <h3>Feedback metadata</h3>
+        <dl>
+          <dt>Theme</dt><dd>{String.replace(@entry.playlist_name || "Not recorded", "_", " ")}</dd>
+          <dt>Playing video</dt><dd>
             <a
-              :if={entry.video_id}
-              href={"https://www.youtube.com/watch?v=#{entry.video_id}"}
+              :if={@entry.video_id}
+              href={"https://www.youtube.com/watch?v=#{@entry.video_id}"}
               target="_blank"
               rel="noopener"
-            >Suggested / referenced video ↗</a>
-            <.form for={%{}} phx-submit="review" id={"review-#{entry.id}"}>
-              <input type="hidden" name="_id" value={entry.id} />
-              <label>My review<textarea name="review[admin_note]" maxlength="4000">{entry.admin_note}</textarea></label>
-              <label>Status<select name="review[status]"><option
-                :for={s <- ~w(open reviewed dismissed)}
-                value={s}
-                selected={entry.status == s}
-              >
-                {s}
-              </option></select></label>
-              <button type="submit">Save review</button>
-            </.form>
-            <.form :if={entry.video_id} for={%{}} phx-submit="accept" id={"accept-#{entry.id}"}>
-              <input type="hidden" name="_id" value={entry.id} />
-              <label>Add video to<select name="theme"><option
-                :for={p <- @playlists}
-                value={p.name}
-                selected={p.name == @playlist.name}
-              >
-                {p.name}
-              </option></select></label>
-              <button type="submit">Add & mark reviewed</button>
-            </.form>
-          </article>
-          <details :if={@feedback != []}>
-            <summary>Copy this inbox view for Codex</summary><textarea id="inbox-export" readonly>{feedback_text(@feedback)}</textarea><button
-              type="button"
-              data-copy-inbox
-            >Copy feedback</button>
-          </details>
-          <p><small>Showing the latest 200 matching submissions.</small></p>
-        </section>
+            >{@entry.video_id} ↗</a><span :if={!@entry.video_id}>Not recorded</span>
+          </dd>
+          <dt>Sent</dt><dd>
+            <time datetime={DateTime.to_iso8601(@entry.inserted_at)}>{Calendar.strftime(
+              @entry.inserted_at,
+              "%b %-d, %Y · %H:%M UTC"
+            )}</time>
+          </dd>
+        </dl>
       </div>
-    </main>
+      <div class="curation-actions">
+        <button
+          aria-pressed={to_string(@entry.status == "included")}
+          phx-click="feedback_status"
+          phx-value-id={@entry.id}
+          phx-value-status={if @entry.status == "included", do: "open", else: "included"}
+        ><span aria-hidden="true">{if @entry.status == "included", do: "☑", else: "☐"}</span>
+        Include for Codex</button>
+        <button
+          :if={@entry.status != "dismissed"}
+          phx-click="feedback_status"
+          phx-value-id={@entry.id}
+          phx-value-status="dismissed"
+        >Dismiss</button>
+      </div>
+    </article>
     """
   end
 end

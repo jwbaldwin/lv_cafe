@@ -9,7 +9,18 @@ defmodule Cafe.Curation do
 
   def list_feedback(status \\ "open") do
     query = from f in Feedback, order_by: [desc: f.inserted_at, desc: f.id], limit: 200
-    Repo.all(if status == "all", do: query, else: where(query, [f], f.status == ^status))
+
+    Repo.all(
+      case status do
+        "all" -> query
+        "open" -> where(query, [f], f.status in ["open", "reviewed"])
+        _ -> where(query, [f], f.status == ^status)
+      end
+    )
+  end
+
+  def feedback_for_codex do
+    Repo.all(from f in Feedback, where: f.status == "included", order_by: [f.inserted_at, f.id])
   end
 
   def submit_feedback(attrs, source \\ "visitor") do

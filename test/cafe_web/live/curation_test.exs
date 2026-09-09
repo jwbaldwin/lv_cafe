@@ -80,13 +80,39 @@ defmodule CafeWeb.CurationTest do
     assert html =~ "I would love a pirate theme"
     entry = hd(Curation.list_feedback())
 
-    inbox
-    |> form("#review-#{entry.id}",
-      review: %{status: "reviewed", admin_note: "Consider sea shanties"}
-    )
-    |> render_submit()
+    assert has_element?(
+             inbox,
+             "#feedback-#{entry.id} .curation-feedback-context",
+             "Playing video"
+           )
 
-    assert Repo.get!(Feedback, entry.id).admin_note == "Consider sea shanties"
+    refute has_element?(inbox, "#accept-#{entry.id}")
+    refute has_element?(inbox, "#inbox-export", entry.message)
+    assert has_element?(inbox, "button[data-copy-inbox][disabled]")
+    inbox |> element("#feedback-#{entry.id} button", "Include for Codex") |> render_click()
+    assert Repo.get!(Feedback, entry.id).status == "included"
+    assert Repo.get!(Feedback, entry.id).admin_note == nil
+    assert has_element?(inbox, "#inbox-export", entry.message)
+    assert has_element?(inbox, "#inbox-export", "Playing video:")
+    {:ok, reloaded, _} = live(admin_conn(build_conn()), "/admin?view=inbox&status=dismissed")
+    assert has_element?(reloaded, "#inbox-export", entry.message)
+    refute has_element?(inbox, "#feedback-#{entry.id}")
+    inbox |> form("#inbox-filter", status: "included") |> render_change()
+    assert has_element?(inbox, "#feedback-#{entry.id} button[aria-pressed=true]")
+    inbox |> element("#feedback-#{entry.id} button", "Include for Codex") |> render_click()
+    assert Repo.get!(Feedback, entry.id).status == "open"
+    refute has_element?(inbox, "#inbox-export", entry.message)
+    inbox |> form("#inbox-filter", status: "open") |> render_change()
+    assert has_element?(inbox, "#feedback-#{entry.id} button[aria-pressed=false]")
+    inbox |> element("#feedback-#{entry.id} button", "Include for Codex") |> render_click()
+    inbox |> form("#inbox-filter", status: "included") |> render_change()
+
+    inbox |> element("#feedback-#{entry.id} button", "Dismiss") |> render_click()
+    assert Repo.get!(Feedback, entry.id).status == "dismissed"
+    refute has_element?(inbox, "#inbox-export", entry.message)
+    inbox |> form("#inbox-filter", status: "dismissed") |> render_change()
+    inbox |> element("#feedback-#{entry.id} button", "Include for Codex") |> render_click()
+    assert Repo.get!(Feedback, entry.id).status == "included"
 
     {:ok, _, public} =
       live(
@@ -97,6 +123,29 @@ defmodule CafeWeb.CurationTest do
       )
 
     refute public =~ "Consider sea shanties"
+  end
+
+  test "admin sections keep the selected theme and clear preview state", %{conn: conn} do
+    {:ok, view, _} = live(admin_conn(conn), "/admin?theme=cozy")
+    assert has_element?(view, "section[aria-label='Feedback inbox'][hidden]")
+    render_hook(view, "preview", %{"id" => "cEn4c9JDy8A"})
+    assert_push_event(view, "preview_video", %{video_id: "cEn4c9JDy8A"})
+
+    render_hook(view, "player_verified", %{
+      "video_id" => "cEn4c9JDy8A",
+      "title" => "Cozy",
+      "live" => true,
+      "duration_seconds" => 0
+    })
+
+    assert has_element?(view, "button[phx-click='save_verification']")
+    view |> element("nav[aria-label='Admin sections'] a", "Inbox") |> render_click()
+    assert_patch(view, "/admin?view=inbox&theme=cozy&status=open")
+    assert has_element?(view, "section[aria-label='Playlists'][hidden]")
+    refute has_element?(view, "section[aria-label='Feedback inbox'][hidden]")
+    refute has_element?(view, "button[phx-click='save_verification']")
+    view |> form("#inbox-filter", status: "included") |> render_change()
+    assert_patch(view, "/admin?view=inbox&theme=cozy&status=included")
   end
 
   test "legacy feedback URL opens the player widget", %{conn: conn} do
