@@ -120,30 +120,19 @@ defmodule CafeWeb.RoomLive do
       </div>
       <div
         :if={@info_panel}
-        phx-mounted={
-          JS.transition(
-            {"ease-out duration-100", "opacity-0 translate-x-full", "opacity-100 translate-x-0"}
-          )
-        }
-        phx-remove={
-          JS.transition(
-            {"ease-in duration-100", "opacity-100 translate-x-0", "opacity-0 translate-x-full"}
-          )
-        }
-        class="fixed right-4 top-24"
+        phx-mounted={CafeWeb.AsciiFrame.enter()}
+        phx-remove={CafeWeb.AsciiFrame.exit()}
+        class="fixed right-4 top-24 ascii-surface info-panel"
       >
-        <pre class="text-gray-300 font-mono">
-    +-----------------------+
-    |           <.link navigate="https://x.com/jwbaldwin" class="text-white">@jwbaldwin</.link>  |
-    |                       |
-    |  [space]   pause/play |
-    |      [m]  mute/unmute |
-    |      [t]  change vibe |
-    |      [p]     pomodoro |
-    |   [←][→]    prev/next |
-    |   [↑][↓]       volume |
-    +-----------------------+
-    </pre>
+        <CafeWeb.AsciiFrame.border />
+        <pre class="info-panel-content"><.link navigate="https://x.com/jwbaldwin" class="text-white">@jwbaldwin</.link>
+
+    [space]   pause/play
+    [m]  mute/unmute
+    [t]  change vibe
+    [p]     pomodoro
+    [←][→]    prev/next
+    [↑][↓]       volume</pre>
       </div>
     </div>
     """

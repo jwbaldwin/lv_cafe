@@ -96,7 +96,7 @@ defmodule CafeWeb.PomodoroTimer do
 
   def render(assigns) do
     ~H"""
-    <div id="pomodoro" class="absolute bottom-8 right-12 z-[90]">
+    <div id="pomodoro" class="absolute top-8 right-20 z-[90]">
       <button
         phx-click="toggle_timer"
         phx-window-keyup="control_keypress"
@@ -116,28 +116,34 @@ defmodule CafeWeb.PomodoroTimer do
       </button>
       <div
         :if={@open}
-        phx-mounted={
-          JS.transition(
-            {"ease-out duration-100", "opacity-0 translate-x-full", "opacity-100 translate-x-0"}
-          )
-        }
-        phx-remove={
-          JS.transition(
-            {"ease-in duration-100", "opacity-100 translate-x-0", "opacity-0 translate-x-full"}
-          )
-        }
-        class="fixed right-0 bottom-24"
+        phx-mounted={CafeWeb.AsciiFrame.enter()}
+        phx-remove={CafeWeb.AsciiFrame.exit()}
+        class="fixed right-4 top-24 ascii-surface pomodoro-panel"
       >
-        <pre class="text-gray-300 font-mono text-shadow-green text-sm whitespace-pre-wrap w-52">
-        +----------------+
-        |   [Pomodoro]   |
-        |                |
-        |  work:   <%= if @current_timer == :work, do: format_time(@time_left), else: format_time(@work_duration)  %> |
-        | break:   <%= if @current_timer == :break, do: format_time(@time_left), else: format_time(@break_duration)  %> |
-        |                |
-        | <%= if @timer_state == :running do %><button phx-click="pause_timer" phx-target={@myself} class="text-white text-shadow-white hover:text-white">[paus]</button><% else %><button phx-click="start_timer" phx-target={@myself} class="text-white text-shadow-white hover:text-white">[strt]</button><% end %>   <button phx-click="reset_timer" phx-target={@myself} class="text-white text-shadow-red hover:text-white">[rst]</button> |
-        +----------------+
-        </pre>
+        <CafeWeb.AsciiFrame.border />
+        <div class="pomodoro-heading">[Pomodoro]</div>
+        <pre class="pomodoro-times"> work: <%= if @current_timer == :work, do: format_time(@time_left), else: format_time(@work_duration) %>
+    break: <%= if @current_timer == :break, do: format_time(@time_left), else: format_time(@break_duration) %></pre>
+        <div class="pomodoro-actions">
+          <%= if @timer_state == :running do %>
+            <button
+              phx-click="pause_timer"
+              phx-target={@myself}
+              class="text-white text-shadow-white hover:text-white"
+            >[paus]</button>
+          <% else %>
+            <button
+              phx-click="start_timer"
+              phx-target={@myself}
+              class="text-white text-shadow-white hover:text-white"
+            >[strt]</button>
+          <% end %>
+          <button
+            phx-click="reset_timer"
+            phx-target={@myself}
+            class="text-white text-shadow-red hover:text-white"
+          >[rst]</button>
+        </div>
       </div>
     </div>
     """

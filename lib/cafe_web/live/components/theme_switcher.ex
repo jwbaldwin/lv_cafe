@@ -25,7 +25,7 @@ defmodule CafeWeb.ThemeSwitcher do
 
   def render(assigns) do
     ~H"""
-    <div id="themes" phx-hook="ThemePicker" class="absolute top-8 right-20 z-[90]">
+    <div id="themes" phx-hook="ThemePicker" class="absolute top-8 right-28 z-[90]">
       <button
         phx-click={toggle_picker()}
         id="theme-picker-toggle"

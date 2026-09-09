@@ -149,3 +149,22 @@
 .curation-login { max-width: 650px; }
 .curation-shell .curation-honeypot { position: absolute; left: -9999px; }
 @media(max-width: 850px) { .curation-shell { padding: 18px; } .curation-columns { grid-template-columns: 1fr; } .curation-video-heading img { width: 100px; } }
+
+/* Literal ASCII edges shared by the translucent player widgets. */
+.ascii-surface { isolation: isolate; color: #e5e7eb; font-family: monospace; font-size: 14px; text-shadow: 0 0 4px rgba(0, 100, 0, .7); }
+
+.ascii-frame { position: absolute; inset: 0; z-index: -1; pointer-events: none; font: 14px/1.5 monospace; color: #eee; }
+/* Match the backing to the centerline of the ASCII border glyphs. */
+.ascii-frame::before { content: ""; position: absolute; inset: .75em .5ch; background: rgba(0,0,0,.45); z-index: -1; }
+.ascii-edge { position: absolute; left: 0; right: 0; display: flex; white-space: nowrap; height: 1.5em; }
+.ascii-top { top: 0; } .ascii-bottom { bottom: 0; }
+.ascii-dashes { flex: 1; min-width: 0; overflow: hidden; }
+.ascii-side { position: absolute; top: 1.5em; bottom: 1.5em; width: 1ch; overflow: hidden; white-space: pre; }
+.ascii-left { left: 0; } .ascii-right { right: 0; }
+.pomodoro-panel { width: 20ch; padding: 1.25rem 1.5ch; }
+.pomodoro-heading { text-align: center; }
+.pomodoro-times { font: inherit; line-height: 1.5; margin: .75rem 0; text-align: center; }
+.pomodoro-actions { display: flex; justify-content: space-around; }
+
+.info-panel { width: 27ch; max-width: calc(100vw - 2rem); padding: 1.25rem 2ch; }
+.info-panel-content { margin: 0; font: inherit; line-height: 1.5; text-align: right; }
