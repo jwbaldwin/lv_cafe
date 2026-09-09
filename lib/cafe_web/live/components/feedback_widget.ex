@@ -103,7 +103,7 @@ defmodule CafeWeb.FeedbackWidget do
             rows="4"
             maxlength="255"
             required
-            placeholder="What’s on your mind?"
+            placeholder="lmk! suggestions, vibes, whatever"
             aria-describedby="feedback-count"
           >{@message}</textarea>
           <p :if={@error} role="alert">{@error}</p>
