@@ -96,7 +96,7 @@ defmodule CafeWeb.PomodoroTimer do
 
   def render(assigns) do
     ~H"""
-    <div id="pomodoro" class="absolute top-8 right-20 z-[90]">
+    <div id="pomodoro" class="absolute top-8 right-20 z-[80]">
       <button
         phx-click="toggle_timer"
         phx-window-keyup="control_keypress"

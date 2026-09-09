@@ -135,15 +135,20 @@ defmodule CafeWeb.RoomLive do
         class="fixed right-4 top-24 ascii-surface info-panel"
       >
         <CafeWeb.AsciiFrame.border />
-        <pre class="info-panel-content"><.link navigate="https://x.com/jwbaldwin" class="text-white">@jwbaldwin</.link>
-
-    [space]   pause/play
-    [m]  mute/unmute
-    [t]  change vibe
-    [p]     pomodoro
-    [f]     feedback
-    [←][→]    prev/next
-    [↑][↓]       volume</pre>
+        <.link navigate="https://x.com/jwbaldwin" class="text-white">@jwbaldwin</.link>
+        <dl class="info-panel-shortcuts">
+          <%= for {key, label} <- [
+            {"[space]", "pause/play"},
+            {"[m]", "mute/unmute"},
+            {"[t]", "change vibe"},
+            {"[p]", "pomodoro"},
+            {"[f]", "feedback"},
+            {"[←][→]", "prev/next"},
+            {"[↑][↓]", "volume"}
+          ] do %>
+            <dt>{key}</dt><dd>{label}</dd>
+          <% end %>
+        </dl>
       </div>
     </div>
     """

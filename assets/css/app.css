@@ -151,9 +151,9 @@
 @media(max-width: 850px) { .curation-shell { padding: 18px; } .curation-columns { grid-template-columns: 1fr; } .curation-video-heading img { width: 100px; } }
 
 /* Literal ASCII edges shared by the translucent player widgets. */
-.ascii-surface { isolation: isolate; color: #e5e7eb; font-family: monospace; font-size: 14px; text-shadow: 0 0 4px rgba(0, 100, 0, .7); }
+.ascii-surface { isolation: isolate; color: #e5e7eb; font-family: var(--font-sans); font-size: 14px; text-shadow: 0 0 4px rgba(0, 100, 0, .7); }
 .feedback-widget { position: absolute; bottom: 2rem; right: 3rem; z-index: 80; color: white; }
-.feedback-panel { position: fixed; bottom: 6rem; right: 1rem; width: min(32ch, calc(100vw - 2rem)); padding: 1.25rem 1rem; }
+.feedback-panel { position: fixed; bottom: 6rem; right: 1rem; width: min(17rem, calc(100vw - 2rem)); padding: 1.25rem 1rem; }
 .feedback-panel header, .feedback-panel footer { display: flex; justify-content: space-between; align-items: center; gap: 1rem; }
 .feedback-panel textarea { display: block; width: 100%; margin: .75rem 0; padding: .25rem 0; background: transparent; color: white; font: inherit; border: none; resize: none; }
 .feedback-panel textarea:focus { outline: none; box-shadow: none; }
@@ -167,10 +167,10 @@
 .ascii-dashes { flex: 1; min-width: 0; overflow: hidden; }
 .ascii-side { position: absolute; top: 1.5em; bottom: 1.5em; width: 1ch; overflow: hidden; white-space: pre; }
 .ascii-left { left: 0; } .ascii-right { right: 0; }
-.pomodoro-panel { width: 20ch; padding: 1.25rem 1.5ch; }
+.pomodoro-panel { width: 10.5rem; padding: 1.25rem .75rem; }
 .pomodoro-heading { text-align: center; }
 .pomodoro-times { font: inherit; line-height: 1.5; margin: .75rem 0; text-align: center; }
 .pomodoro-actions { display: flex; justify-content: space-around; }
 
-.info-panel { width: 27ch; max-width: calc(100vw - 2rem); padding: 1.25rem 2ch; }
-.info-panel-content { margin: 0; font: inherit; line-height: 1.5; text-align: right; }
+.info-panel { width: 14.25rem; max-width: calc(100vw - 2rem); padding: 1.25rem 1rem; }
+.info-panel-shortcuts { display: grid; grid-template-columns: max-content max-content; justify-content: end; column-gap: 1ch; margin-top: 1.5em; line-height: 1.5; text-align: right; }
