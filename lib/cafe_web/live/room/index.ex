@@ -85,6 +85,7 @@ defmodule CafeWeb.RoomLive do
           id="youtube-player-container"
           phx-hook="YouTubePlayer"
           data-video-id={@station.video_id}
+          data-start-seconds={@station.start_seconds}
           phx-update="ignore"
         >
           <div class="pointer-events-none absolute left-1/2 top-1/2 aspect-video h-[56.25vw] min-h-full w-[177.78vh] min-w-full -translate-x-1/2 -translate-y-1/2">
@@ -184,7 +185,11 @@ defmodule CafeWeb.RoomLive do
     socket
     |> assign(:station, station)
     |> assign(:title, nil)
-    |> push_event("changeVideo", %{video_id: station.video_id, volume: socket.assigns.volume})
+    |> push_event("changeVideo", %{
+      video_id: station.video_id,
+      start_seconds: station.start_seconds,
+      volume: socket.assigns.volume
+    })
   end
 
   def handle_event("toggle_info_panel", _params, socket) do

@@ -24,22 +24,7 @@ defmodule Cafe.Stations do
   ]
   @seasons [:spring, :summer, :autumn, :winter]
 
-  @stations %{
-    seasons: %{
-      spring: ["ZMjdwYVmnog", "hODhrZlpcgo", "aP139Pah2c8"],
-      summer: ["NWw1ZuDIjlw", "gUbNlN_SqpE", "-VjOjBLpMws"],
-      autumn: ["pa6CyLN3wPY", "X59TpY0qtHE", "hrd0MSGc2Lk"],
-      winter: ["XVSL1DgGGiw", "tONVgIvdk0A", "S-4hwfyK-XQ"]
-    },
-    vibes: %{
-      blade_runner: ["4FhsjQ2xess", "XB0e7pI3Q8I", "svS19DWJ5t4"],
-      christmas: ["qwdzIECTqn8", "wQwqjzdwIyw", "Rnx08JFs6nQ"],
-      cozy: ["tIMtzkZ93gg", "s6XIt0vUq6A", "AUT4ZdXi37s"],
-      locked_in: ["00fOyOzuSfM", "EN0A5derVo0", "9M4jZuqdw04"],
-      rainy_day: ["DEWzT1geuPU", "3u0wlqe8lVk", "lCrqRhCt-oM"],
-      morning_coffee: ["3E0iUbAnCsM", "337OKHV3BRI", "1fueZCTYkpA"]
-    }
-  }
+  @vibes [:blade_runner, :christmas, :cozy, :locked_in, :morning_coffee, :rainy_day]
 
   def all_stations() do
     get_seasons() ++ get_vibes()
@@ -50,14 +35,11 @@ defmodule Cafe.Stations do
   end
 
   def get_vibes() do
-    @stations[:vibes]
-    |> Map.keys()
-    |> Enum.sort()
+    @vibes
   end
 
   def station_count(theme, sub_theme) do
-    @stations
-    |> get_in([theme, sub_theme])
+    videos(theme, sub_theme)
     |> case do
       stations when is_list(stations) -> length(stations)
       nil -> 0
@@ -68,7 +50,7 @@ defmodule Cafe.Stations do
   Get the specific station by theme and position
   """
   def fetch_station(theme, sub_theme, station_number) when is_integer(station_number) do
-    case get_in(@stations, [theme, sub_theme]) do
+    case videos(theme, sub_theme) do
       nil ->
         {:error, :station_not_found}
 
@@ -76,19 +58,38 @@ defmodule Cafe.Stations do
         {:error, :station_empty}
 
       stations ->
-        station_number =
-          case station_number do
-            station_number when station_number > length(stations) - 1 -> 0
-            station_number when station_number < 0 -> length(stations) - 1
-            station_number -> station_number
-          end
+        station_number = Integer.mod(station_number, length(stations))
 
-        if video_id = Enum.at(stations, station_number) do
+        if video = Enum.at(stations, station_number) do
           {:ok,
-           %Station{name: Atom.to_string(sub_theme), video_id: video_id, position: station_number}}
+           %Station{
+             name: Atom.to_string(sub_theme),
+             video_id: video["video_id"],
+             position: station_number,
+             start_seconds: playback_start(video)
+           }}
         else
           {:error, :video_not_found}
         end
+    end
+  end
+
+  @external_resource Path.expand("../../priv/playlists.json", __DIR__)
+  @catalog @external_resource |> File.read!() |> Jason.decode!()
+
+  defp videos(theme, sub_theme) do
+    get_in(@catalog, [Atom.to_string(theme), Atom.to_string(sub_theme)])
+  end
+
+  @doc "Returns the intro offset, or a clock-based position for recordings that join in progress."
+  def playback_start(video, now \\ System.system_time(:second)) do
+    start = Map.get(video, "start_seconds", 0)
+    duration = Map.get(video, "duration_seconds", 0)
+
+    if video["tune_in"] == true && video["live"] != true && duration > start + 10 do
+      start + Integer.mod(now, duration - start - 10)
+    else
+      if video["live"] == true, do: 0, else: start
     end
   end
 

@@ -6,6 +6,7 @@ defmodule Cafe.Stations.Station do
     field :name, :string
     field :video_id, :string
     field :position, :integer
+    field :start_seconds, :integer, virtual: true, default: 0
 
     timestamps(type: :utc_datetime)
   end

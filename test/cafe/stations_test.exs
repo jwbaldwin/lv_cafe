@@ -30,7 +30,7 @@ defmodule Cafe.StationsTest do
             %Stations.Station{
               name: "blade_runner",
               position: 0,
-              video_id: "4FhsjQ2xess"
+              video_id: "UjlMEqTu2KI"
             }} == Stations.fetch_station(:vibes, :blade_runner, 0)
   end
 
@@ -49,5 +49,24 @@ defmodule Cafe.StationsTest do
     assert stations.autumn == %{char: "a", name: "[a]utumn"}
     assert stations.morning_coffee == %{char: "r", name: "mo[r]ning_coffee"}
     assert stations |> Map.values() |> Enum.map(& &1.char) |> Enum.uniq() |> length() == 10
+  end
+
+  test "recordings join in progress without seeking into the ending or changing live streams" do
+    video = %{"start_seconds" => 30, "duration_seconds" => 100, "tune_in" => true}
+    assert Stations.playback_start(video, 0) == 30
+    assert Stations.playback_start(video, 59) == 89
+    assert Stations.playback_start(video, 60) == 30
+    assert Stations.playback_start(Map.put(video, "live", true), 59) == 0
+    assert Stations.playback_start(%{}, 59) == 0
+    assert Stations.playback_start(%{"start_seconds" => 12}, 59) == 12
+  end
+
+  test "expanded playlists wrap arbitrary offsets in both directions" do
+    assert Stations.station_count(:vibes, :christmas) == 6
+
+    for index <- -13..13 do
+      assert {:ok, station} = Stations.fetch_station(:vibes, :christmas, index)
+      assert station.position == Integer.mod(index, 6)
+    end
   end
 end

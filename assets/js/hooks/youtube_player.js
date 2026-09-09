@@ -3,6 +3,7 @@ const playbackKeys = { ' ': 'toggle', m: 'mute', ArrowUp: 'louder', ArrowDown: '
 const YouTubePlayer = {
   mounted() {
     this.currentVideoId = this.el.dataset.videoId;
+    this.startSeconds = Number(this.el.dataset.startSeconds || 0);
     this.volume = 50;
     this.muted = false;
     this.wantsToPlay = true;
@@ -29,8 +30,9 @@ const YouTubePlayer = {
     document.addEventListener('click', this.onClick);
     document.addEventListener('keydown', this.onKeyDown);
 
-    this.handleEvent('changeVideo', ({ video_id, volume }) => {
+    this.handleEvent('changeVideo', ({ video_id, start_seconds = 0, volume }) => {
       this.currentVideoId = video_id;
+      this.startSeconds = start_seconds;
       this.volume = volume;
       this.failed = false;
       this.isPlaying = false;
@@ -63,7 +65,7 @@ const YouTubePlayer = {
   initPlayer() {
     this.player = new window.YT.Player('youtube-player', {
       width: '100%', height: '100%', videoId: this.currentVideoId,
-      playerVars: { autoplay: 1, mute: 0, controls: 0, playsinline: 1, rel: 0, disablekb: 1, origin: window.location.origin },
+      playerVars: { start: this.startSeconds, autoplay: 1, mute: 0, controls: 0, playsinline: 1, rel: 0, disablekb: 1, origin: window.location.origin },
       events: {
         onReady: () => {
           this.isReady = true;
@@ -164,12 +166,12 @@ const YouTubePlayer = {
     this.applyAudio();
     if (this.wantsToPlay) {
       this.loading = true;
-      this.player.loadVideoById(this.currentVideoId);
+      this.player.loadVideoById({ videoId: this.currentVideoId, startSeconds: this.startSeconds });
       this.watchLoading();
     } else {
       clearTimeout(this.loadTimeout);
       this.loading = false;
-      this.player.cueVideoById(this.currentVideoId);
+      this.player.cueVideoById({ videoId: this.currentVideoId, startSeconds: this.startSeconds });
     }
     this.reportState();
   },

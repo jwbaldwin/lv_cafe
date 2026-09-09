@@ -31,7 +31,7 @@ test('queues the latest station until the iframe is ready', () => {
     assert.equal(t.calls.length,0);
     t.player.getVideoData=()=>({video_id:'abcdefghijk'});
     t.ready();
-    assert.ok(t.calls.some(c=>c[0]==='load'&&c[1]==='newvideo123'));
+    assert.ok(t.calls.some(c=>c[0]==='load'&&c[1].videoId==='newvideo123'));
   } finally {t.instance.destroyed();}
 });
 test('blocked audible autoplay falls back to muted playback once', () => {
@@ -53,7 +53,7 @@ test('a paused video resumes with one click and paused station changes stay paus
     t.ready();t.state(1);t.instance.act('toggle');
     assert.deepEqual(t.calls.at(-1),['pause']);
     t.handlers.changeVideo({video_id:'newvideo123',volume:50});
-    assert.deepEqual(t.calls.at(-1),['cue','newvideo123']);
+    assert.deepEqual(t.calls.at(-1),['cue',{videoId:'newvideo123',startSeconds:0}]);
     t.instance.act('toggle');
     assert.deepEqual(t.calls.at(-1),['play']);
   } finally {t.instance.destroyed();}
@@ -102,5 +102,18 @@ test('metadata arriving after a playing event is reconciled', () => {
     t.instance.syncPlayback();
     assert.equal(t.instance.isPlaying,true);
     assert.equal(t.events.find(e=>e[0]==='player_ready')[1].title,'Current');
+  } finally {t.instance.destroyed();}
+});
+
+
+test('station offsets survive both playing and paused switches', () => {
+  const t=setup();
+  try {
+    t.ready();
+    t.handlers.changeVideo({video_id:'newvideo123',start_seconds:1234,volume:50});
+    assert.deepEqual(t.calls.at(-1),['load',{videoId:'newvideo123',startSeconds:1234}]);
+    t.state(1);t.instance.act('toggle');
+    t.handlers.changeVideo({video_id:'newvideo456',start_seconds:4321,volume:50});
+    assert.deepEqual(t.calls.at(-1),['cue',{videoId:'newvideo456',startSeconds:4321}]);
   } finally {t.instance.destroyed();}
 });
