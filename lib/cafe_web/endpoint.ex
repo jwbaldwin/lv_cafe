@@ -8,7 +8,8 @@ defmodule CafeWeb.Endpoint do
     store: :cookie,
     key: "_cafe_key",
     signing_salt: "5OoS8Hbm",
-    same_site: "Lax"
+    same_site: "Lax",
+    secure: Application.compile_env(:cafe, :secure_cookies, false)
   ]
 
   socket "/live", Phoenix.LiveView.Socket,

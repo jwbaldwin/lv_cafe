@@ -35,3 +35,5 @@ cafe-*.tar
 npm-debug.log
 /assets/node_modules/
 
+# Local-only scratch files.
+/.local/

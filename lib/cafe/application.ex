@@ -10,6 +10,7 @@ defmodule Cafe.Application do
     children = [
       CafeWeb.Telemetry,
       Cafe.Repo,
+      Cafe.RateLimit,
       {DNSCluster, query: Application.get_env(:cafe, :dns_cluster_query) || :ignore},
       {Phoenix.PubSub, name: Cafe.PubSub},
       # Start a worker by calling: Cafe.Worker.start_link(arg)

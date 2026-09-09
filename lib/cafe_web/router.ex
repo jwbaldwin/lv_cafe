@@ -27,6 +27,30 @@ defmodule CafeWeb.Router do
     live "/", RoomLive, :index
   end
 
+  pipeline :management do
+    plug :put_root_layout, html: {CafeWeb.Layouts, :management}
+    plug :put_secure_browser_headers
+  end
+
+  pipeline :admin do
+    plug CafeWeb.AdminAuth
+  end
+
+  scope "/", CafeWeb do
+    pipe_through [:browser, :management]
+    get "/admin/login", AdminSessionController, :new
+    post "/admin/login", AdminSessionController, :create
+    delete "/admin/logout", AdminSessionController, :delete
+  end
+
+  scope "/", CafeWeb do
+    pipe_through [:browser, :management, :admin]
+
+    live_session :admin, on_mount: [{CafeWeb.AdminAuth, :admin}] do
+      live "/admin", AdminLive
+    end
+  end
+
   # Other scopes may use custom stacks.
   # scope "/api", CafeWeb do
   #   pipe_through :api

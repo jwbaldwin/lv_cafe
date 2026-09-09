@@ -24,6 +24,7 @@ defmodule CafeWeb.RoomLive do
         session_id = session["session_id"] || Ecto.UUID.generate()
         CafeWeb.Presence.track_user(station.name, session_id)
         Phoenix.PubSub.subscribe(Cafe.PubSub, "listeners")
+        Phoenix.PubSub.subscribe(Cafe.PubSub, "playlists")
 
         socket
         |> assign(:session_id, session_id)
@@ -146,6 +147,27 @@ defmodule CafeWeb.RoomLive do
       </div>
     </div>
     """
+  end
+
+  def handle_info({:playlist_updated, name}, socket) do
+    if socket.assigns.station.name == name do
+      playlist = Cafe.Curation.get_playlist!(name)
+
+      position =
+        Enum.find_index(playlist.videos, &(&1.video_id == socket.assigns.station.video_id)) ||
+          socket.assigns.station.position
+
+      station = get_station(socket, position)
+
+      socket =
+        if station.video_id == socket.assigns.station.video_id,
+          do: assign(socket, :station, station),
+          else: socket |> assign(:failed_videos, MapSet.new()) |> change_video(station)
+
+      {:noreply, socket}
+    else
+      {:noreply, socket}
+    end
   end
 
   def handle_info(:listeners_changed, socket), do: {:noreply, refresh_presence(socket)}

@@ -20,6 +20,8 @@ if System.get_env("PHX_SERVER") do
   config :cafe, CafeWeb.Endpoint, server: true
 end
 
+config :cafe, :admin_password, System.get_env("ADMIN_PASSWORD")
+
 if config_env() == :prod do
   database_url =
     System.get_env("DATABASE_URL") ||

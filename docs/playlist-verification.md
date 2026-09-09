@@ -36,3 +36,5 @@ Fourteen replacement/additional videos reached PLAYING and advanced in the local
 Preserved spring, autumn, winter, rainy day; summer slots 2–3; Locked In slots 1–2; and all three existing Christmas videos. Replaced all Blade Runner, Cozy, and Morning Coffee choices. Christmas now has six choices.
 
 Rejected `f02mOEt11OQ` despite successful playback: cats appear beside the programmer. Chose `mgYDCK8ygIM`, a computer desk overlooking a city, instead. `vIlzvUsB6H0` also passed as an unused summer alternate. These unused candidates are not in the app catalog.
+
+See [curation.md](curation.md) for the integrated Phoenix admin panel and saved taste guidance.

@@ -24,11 +24,13 @@ import topbar from "../vendor/topbar";
 import YouTubePlayer from "./hooks/youtube_player.js";
 import Preferences from "./hooks/preferences.js";
 import ThemePicker from "./hooks/theme_picker.js";
+import AdminPreview from "./hooks/admin_preview.js";
 
 let Hooks = {
   YouTubePlayer: YouTubePlayer,
   Preferences: Preferences,
   ThemePicker: ThemePicker,
+  AdminPreview,
 };
 
 let csrfToken = document
@@ -59,3 +61,11 @@ liveSocket.connect();
 // >> liveSocket.enableLatencySim(1000)  // enabled for duration of browser session
 // >> liveSocket.disableLatencySim()
 window.liveSocket = liveSocket;
+
+document.addEventListener('click', async event => {
+  const button = event.target.closest('[data-copy-inbox]');
+  if (!button) return;
+  const textarea = document.getElementById('inbox-export');
+  try { await navigator.clipboard.writeText(textarea.value); button.textContent = 'Copied'; }
+  catch { textarea.focus(); textarea.select(); button.textContent = 'Select and copy below'; }
+});

@@ -119,3 +119,33 @@
       drop-shadow(0 0 60px rgb(255 255 255));
   }
 }
+
+/* Scoped to the feedback and admin pages; the player keeps its existing styling. */
+.curation-body { background: #151715; color: #eee9df; font: 15px/1.5 system-ui, sans-serif; }
+.curation-shell { max-width: 1400px; margin: auto; padding: 32px; }
+.curation-shell h1 { font-size: 30px; letter-spacing: -1px; margin: 16px 0; }
+.curation-shell h2 { font-size: 18px; margin: 12px 0; }
+.curation-shell p { margin: 14px 0; color: #c3c5bc; }
+.curation-shell a { color: #d4e3b5; text-decoration: underline; }
+.curation-shell small { color: #b8bdae; }
+.curation-shell label { display: block; margin: 12px 0; }
+.curation-shell button, .curation-shell input, .curation-shell select, .curation-shell textarea { font: inherit; border: 1px solid #51564e; border-radius: 6px; background: #242923; color: inherit; padding: 8px 12px; }
+.curation-shell input:not([type=checkbox]):not([type=hidden]), .curation-shell textarea, .curation-shell select { display: block; width: 100%; margin-top: 6px; }
+.curation-shell button { cursor: pointer; }
+.curation-shell button:hover { background: #343d30; }
+.curation-shell button:disabled { opacity: .4; cursor: default; }
+.curation-shell textarea { min-height: 90px; resize: vertical; }
+.curation-shell details { margin: 16px 0; }
+.curation-shell summary { cursor: pointer; }
+.curation-header, .curation-video-heading, .curation-actions { display: flex; gap: 16px; align-items: center; }
+.curation-header { justify-content: space-between; }
+.curation-columns { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 32px; }
+.curation-card { border: 1px solid #42483d; border-radius: 10px; padding: 18px; margin: 20px 0; background: #1d211c; }
+.curation-video-heading img { width: 140px; border-radius: 5px; }
+.curation-video-heading h2 { overflow-wrap: anywhere; }
+.curation-actions { flex-wrap: wrap; margin: 14px 0; }
+.curation-settings { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.curation-message { white-space: pre-wrap; overflow-wrap: anywhere; }
+.curation-login { max-width: 650px; }
+.curation-shell .curation-honeypot { position: absolute; left: -9999px; }
+@media(max-width: 850px) { .curation-shell { padding: 18px; } .curation-columns { grid-template-columns: 1fr; } .curation-video-heading img { width: 100px; } }

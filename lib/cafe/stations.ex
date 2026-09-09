@@ -74,11 +74,16 @@ defmodule Cafe.Stations do
     end
   end
 
-  @external_resource Path.expand("../../priv/playlists.json", __DIR__)
-  @catalog @external_resource |> File.read!() |> Jason.decode!()
-
   defp videos(theme, sub_theme) do
-    get_in(@catalog, [Atom.to_string(theme), Atom.to_string(sub_theme)])
+    with true <- theme in [:seasons, :vibes],
+         true <- sub_theme in (@seasons ++ @vibes),
+         %{theme: stored_theme, videos: videos} <-
+           Cafe.Curation.get_playlist(Atom.to_string(sub_theme)),
+         true <- stored_theme == Atom.to_string(theme) do
+      Enum.map(videos, &Cafe.Curation.Video.to_map(&1))
+    else
+      _ -> nil
+    end
   end
 
   @doc "Returns the intro offset, or a clock-based position for recordings that join in progress."
