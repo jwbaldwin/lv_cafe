@@ -152,6 +152,12 @@
 
 /* Literal ASCII edges shared by the translucent player widgets. */
 .ascii-surface { isolation: isolate; color: #e5e7eb; font-family: monospace; font-size: 14px; text-shadow: 0 0 4px rgba(0, 100, 0, .7); }
+.feedback-widget { position: absolute; bottom: 2rem; right: 3rem; z-index: 80; color: white; }
+.feedback-panel { position: fixed; bottom: 6rem; right: 1rem; width: min(32ch, calc(100vw - 2rem)); padding: 1.25rem 1rem; }
+.feedback-panel header, .feedback-panel footer { display: flex; justify-content: space-between; align-items: center; gap: 1rem; }
+.feedback-panel textarea { display: block; width: 100%; margin: .75rem 0; padding: .25rem 0; background: transparent; color: white; font: inherit; border: none; resize: none; }
+.feedback-panel textarea:focus { outline: none; box-shadow: none; }
+.feedback-panel button:focus-visible { outline: 1px solid white; outline-offset: 3px; }
 
 .ascii-frame { position: absolute; inset: 0; z-index: -1; pointer-events: none; font: 14px/1.5 monospace; color: #eee; }
 /* Match the backing to the centerline of the ASCII border glyphs. */

@@ -26,7 +26,10 @@ import Preferences from "./hooks/preferences.js";
 import ThemePicker from "./hooks/theme_picker.js";
 import AdminPreview from "./hooks/admin_preview.js";
 
+import FeedbackWidget from "./hooks/feedback_widget.js";
+
 let Hooks = {
+  FeedbackWidget,
   YouTubePlayer: YouTubePlayer,
   Preferences: Preferences,
   ThemePicker: ThemePicker,

@@ -10,6 +10,7 @@ defmodule Cafe.Stations do
   # Mute, toggle themes, pause/play, navigation, and volume controls are reserved for the UI
   @global_keys [
     "p",
+    "f",
     "m",
     "t",
     "h",

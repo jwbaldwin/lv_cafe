@@ -25,6 +25,7 @@ defmodule CafeWeb.Router do
     pipe_through :browser
 
     live "/", RoomLive, :index
+    get "/feedback", FeedbackController, :index
   end
 
   pipeline :management do

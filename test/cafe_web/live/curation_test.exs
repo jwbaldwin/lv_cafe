@@ -1,7 +1,7 @@
 defmodule CafeWeb.CurationTest do
   use CafeWeb.ConnCase
   import Phoenix.LiveViewTest
-  alias Cafe.Curation
+  alias Cafe.{Curation, Repo}
   alias Cafe.Curation.Feedback
   alias CafeWeb.AdminAuth
 
@@ -51,6 +51,88 @@ defmodule CafeWeb.CurationTest do
     render_hook(view, "remove", %{"id" => hd(before.videos).video_id})
     assert_redirect(view, "/admin/login")
     assert Curation.get_playlist!("cozy").videos == before.videos
+  end
+
+  test "visitor theme suggestion persists and is visible only in the admin inbox", %{conn: conn} do
+    {:ok, view, _} =
+      live(
+        put_connect_params(conn, %{"preferences" => %{"theme" => "vibes", "sub_theme" => "cozy"}}),
+        "/?feedback=open"
+      )
+
+    view
+    |> form("#feedback-form", feedback: %{message: "I would love a pirate theme"})
+    |> render_submit()
+
+    assert render(view) =~ "sent to the inbox"
+
+    assert [
+             %Feedback{
+               message: "I would love a pirate theme",
+               source: "visitor",
+               playlist_name: "cozy",
+               video_id: "cEn4c9JDy8A"
+             }
+           ] =
+             Curation.list_feedback()
+
+    {:ok, inbox, html} = live(admin_conn(build_conn()), "/admin")
+    assert html =~ "I would love a pirate theme"
+    entry = hd(Curation.list_feedback())
+
+    inbox
+    |> form("#review-#{entry.id}",
+      review: %{status: "reviewed", admin_note: "Consider sea shanties"}
+    )
+    |> render_submit()
+
+    assert Repo.get!(Feedback, entry.id).admin_note == "Consider sea shanties"
+
+    {:ok, _, public} =
+      live(
+        put_connect_params(build_conn(), %{
+          "preferences" => %{"theme" => "vibes", "sub_theme" => "cozy"}
+        }),
+        "/"
+      )
+
+    refute public =~ "Consider sea shanties"
+  end
+
+  test "legacy feedback URL opens the player widget", %{conn: conn} do
+    assert conn |> get("/feedback") |> redirected_to() == "/?feedback=open"
+  end
+
+  test "widget enforces its limit and uses current server context", %{conn: conn} do
+    conn =
+      put_connect_params(conn, %{"preferences" => %{"theme" => "vibes", "sub_theme" => "cozy"}})
+
+    {:ok, view, _} = live(conn, "/?feedback=open")
+
+    view
+    |> form("#feedback-form", feedback: %{message: String.duplicate("a", 256)})
+    |> render_submit()
+
+    assert render(view) =~ "Enter 1–255 characters"
+    assert Curation.list_feedback() == []
+    view |> form("#feedback-form", feedback: %{message: "   "}) |> render_submit()
+    assert Curation.list_feedback() == []
+    send(view.pid, {:change_video, 1, 50})
+    assert_push_event(view, "changeVideo", %{video_id: "MYPVQccHhAQ"})
+
+    view
+    |> element("#feedback-form")
+    |> render_submit(%{
+      "feedback" => %{
+        "message" => String.duplicate("a", 255),
+        "video_id" => "forged",
+        "playlist_name" => "winter",
+        "source" => "admin"
+      }
+    })
+
+    assert [%Feedback{video_id: "MYPVQccHhAQ", playlist_name: "cozy", source: "visitor"}] =
+             Curation.list_feedback()
   end
 
   test "admin can add a video and leave feedback from the same app", %{conn: conn} do

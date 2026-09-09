@@ -21,6 +21,15 @@ defmodule Cafe.Curation do
     |> Repo.insert()
   end
 
+  def submit_player_feedback(message, context, source) do
+    %Feedback{source: source, video_id: context.video_id, playlist_name: context.playlist_name}
+    |> Ecto.Changeset.cast(%{"message" => message}, [:message])
+    |> Ecto.Changeset.update_change(:message, &String.trim/1)
+    |> Ecto.Changeset.validate_required([:message])
+    |> Ecto.Changeset.validate_length(:message, min: 1, max: 255)
+    |> Repo.insert()
+  end
+
   def review_feedback(id, attrs) do
     Repo.get!(Feedback, id) |> Feedback.review_changeset(attrs) |> Repo.update()
   end

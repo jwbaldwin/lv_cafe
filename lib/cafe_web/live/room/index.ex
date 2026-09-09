@@ -3,11 +3,13 @@ defmodule CafeWeb.RoomLive do
 
   alias Cafe.Stations
 
-  def mount(_params, session, socket) do
+  def mount(params, session, socket) do
     socket =
       socket
       |> assign(:title, nil)
       |> assign(:info_panel, false)
+      |> assign(:feedback_initial_open, params["feedback"] == "open")
+      |> assign(:admin_token, session["admin_token"])
       |> assign(:presences, 0)
       |> assign(:volume, 50)
       |> assign(:playing, false)
@@ -73,6 +75,14 @@ defmodule CafeWeb.RoomLive do
         <.live_component module={CafeWeb.PomodoroTimer} id="pomodoro-timer" />
         <.info_panel id="info-panel" info_panel={@info_panel} />
         <.live_component
+          module={CafeWeb.FeedbackWidget}
+          id="feedback-widget"
+          station={@station}
+          session_id={@session_id}
+          admin_token={@admin_token}
+          initial_open={@feedback_initial_open}
+        />
+        <.live_component
           module={CafeWeb.Components.PlayerControls}
           title={@title}
           position={@station.position}
@@ -131,6 +141,7 @@ defmodule CafeWeb.RoomLive do
     [m]  mute/unmute
     [t]  change vibe
     [p]     pomodoro
+    [f]     feedback
     [←][→]    prev/next
     [↑][↓]       volume</pre>
       </div>

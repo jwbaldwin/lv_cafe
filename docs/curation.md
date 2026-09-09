@@ -2,6 +2,12 @@
 
 These pages are part of the existing Phoenix app and use its existing Postgres database. There is no Python tool, separate HTTP server, or browser-local storage dependency.
 
+## Visitor flow
+
+Click the speech-bubble icon on the video to open the feedback widget. Type up to 255 characters; a live counter shows the characters used. Send without leaving or interrupting playback. The server automatically attaches the video ID and playlist/theme playing at submission time, plus the timestamp. Visitors cannot override that context. Feedback can include a link or theme request as plain text. No visitor account is required. Submissions are private to the admin inbox.
+
+The old `/feedback` URL redirects to the player with its widget open. Basic per-session submission limits, server-side text validation, CSRF protection, reduce casual spam. Limits are per app instance and reset on restart. Private admin notes retain their longer limit.
+
 ## Admin flow
 
 Open `/admin` from any browser or device using the deployed site, then sign in. The admin page lets James:
