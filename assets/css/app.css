@@ -120,6 +120,12 @@
   }
 }
 
+/* Match keyboard focus to the player's white ASCII controls. */
+#main :is(button, a, input, select, summary, [tabindex]):focus-visible {
+  outline: 1px dashed #e5e7eb;
+  outline-offset: 4px;
+}
+
 /* Admin-only layout and controls. */
 .curation-body { background: #0a0a0a; color: #ededed; font: 14px/1.5 system-ui, sans-serif; }
 .curation-shell { max-width: 1480px; margin: auto; padding: 0 32px 64px; }
@@ -135,7 +141,7 @@
 .curation-shell button { cursor: pointer; font-weight: 500; white-space: nowrap; }
 .curation-shell button:hover { background: #262626; border-color: #555; }
 .curation-shell button:disabled { opacity: .35; cursor: default; }
-.curation-shell :is(button, a, input, select, textarea, summary):focus-visible { outline: 2px solid #70b7ff; outline-offset: 3px; }
+.curation-shell :is(button, a, input, select, textarea, summary):focus-visible { outline: 1px solid #ededed; outline-offset: 3px; }
 .curation-shell button.curation-primary { background: #ededed; border-color: #ededed; color: #0a0a0a; }
 .curation-shell button.curation-primary:hover { background: #ccc; }
 .curation-shell button.curation-danger { color: #ff9999; }
@@ -213,7 +219,6 @@
 .feedback-panel header, .feedback-panel footer { display: flex; justify-content: space-between; align-items: center; gap: 1rem; }
 .feedback-panel textarea { display: block; width: 100%; margin: .75rem 0; padding: .25rem 0; background: transparent; color: white; font: inherit; border: none; resize: none; }
 .feedback-panel textarea:focus { outline: none; box-shadow: none; }
-.feedback-panel button:focus-visible { outline: 1px solid white; outline-offset: 3px; }
 
 .ascii-frame { position: absolute; inset: 0; z-index: -1; pointer-events: none; font: 14px/1.5 monospace; color: #eee; }
 /* Match the backing to the centerline of the ASCII border glyphs. */
