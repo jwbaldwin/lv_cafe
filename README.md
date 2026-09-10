@@ -20,4 +20,6 @@ The exact local versions are recorded in `.tool-versions`. If PostgreSQL is not 
 
 Run the same validation used by CI with `mix precommit`. Build production assets with `MIX_ENV=prod mix assets.deploy`.
 
-Pushes to `main` or `master` deploy to Fly only after formatting, compilation, tests, and the production asset build pass.
+Pushes to `main` deploy to Hetzner through Kamal after formatting, compilation, tests, and the production asset build pass. PostgreSQL runs on PlanetScale; application connections use PgBouncer.
+
+See [hosting and operations](docs/hosting.md) and the [guide for deploying another app](docs/deploy-another-app.md).

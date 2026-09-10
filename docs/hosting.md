@@ -46,9 +46,9 @@ Schema changes run before app deployment so the readiness check can query the ne
 5. Configure origin TLS and update Cloudflare's existing Vibes record to Hetzner, preserving Full (strict) TLS and WebSocket support
 6. Verify health, playback, LiveView reconnection, admin login, curation writes, and feedback
 7. Verify a second deployment, proxy routing, and memory during overlapping containers
-8. Retain Fly for rollback until cutover is verified, then agree removal of only vibes-cafe and vibes-cafe-db
+8. Retain the old host until cutover is verified, then remove only the retired app and database after authorization
 
-No data export/import is needed. Existing migrations build the schema and load the bundled playlist catalog. Rollback to Fly changes the Cloudflare origin back; data written after cutover will not exist in Fly's database.
+No data export/import was needed. Existing migrations built the schema and loaded the bundled playlist catalog. Fly has now been retired; future code rollbacks use Kamal and the existing PlanetScale database.
 
 ## Changes from Annie's deployment
 
@@ -63,7 +63,7 @@ No data export/import is needed. Existing migrations build the schema and load t
 
 ## Credential records
 
-1Password Private: `Vibes Production` and `Vibes GitHub Actions SSH`. The existing `Vibes admin` entry remains unchanged. The database uses one `vibes_app` role for runtime and migrations
+1Password Private: `Vibes Production` and `Vibes GitHub Actions SSH`. The former admin login and production secure note are consolidated into the `Vibes Production` login item; the duplicate secure note is archived. The login password is `ADMIN_PASSWORD`, and admin autofill remains available. The database uses one `vibes_app` role for runtime and migrations
 
 See [Deploy another app](deploy-another-app.md) for the repeatable procedure and migration-specific lessons
 
@@ -76,6 +76,28 @@ See [Deploy another app](deploy-another-app.md) for the repeatable procedure and
 - Bootstrapped stock Kamal and its shared proxy through the manual CI workflow. The proxy passed the new app's database readiness check and registered the Vibes HTTPS route
 - The first bootstrap caught a missing `service=vibes` image label; the workflow now supplies it. Local proxy boot with a placeholder registry password also failed because Kamal always logs in; CI supplies its temporary GitHub token
 
-Cloudflare's original Vibes records were A `66.241.125.15` and AAAA `2a09:8280:1::65:e11e:0`, both proxied with automatic TTL. The target addresses are A `5.161.214.38` and AAAA `2a01:4ff:f0:6671::1`. The zone uses automatic Full (strict) TLS; Always Use HTTPS was off. Preserve both values for rollback and change both address families during cutover
+Cloudflare's original Vibes records were A `66.241.125.15` and AAAA `2a09:8280:1::65:e11e:0`, both proxied with automatic TTL. The target addresses are A `5.161.214.38` and AAAA `2a01:4ff:f0:6671::1`. The zone uses automatic Full (strict) TLS; Always Use HTTPS was off. These original values are retained here as migration history; both address families now point to Hetzner
 
-The old `_acme-challenge.vibes` CNAME points to `vibes.jwbaldwin.com.xdk0nn.flydns.net`. It belongs to Fly's certificate setup, not Kamal's HTTP challenge
+The obsolete `_acme-challenge.vibes` CNAME pointing to `vibes.jwbaldwin.com.xdk0nn.flydns.net` was removed after Fly retirement. Kamal does not need this DNS record
+
+### Domain cutover
+
+The migration PR was merged as `4d4a556d1c8be3c8d9b2189b5fff78128e21e101`. Main passed tests, built the image, and deployed the replacement successfully; the public check failed while DNS/HTTPS cutover was pending
+
+Both Cloudflare address records were switched to Hetzner with proxy status preserved. IPv4 was briefly saved back to Fly during a proposed fallback, then restored to Hetzner after the decision to keep the new origin and wait
+
+Public probes had triggered certificate requests on the staged proxy while the domain still pointed at Fly. Those failed authorizations exhausted Let's Encrypt's per-domain/account allowance and delayed certificate issuance. Future migrations should avoid registering an automatically issued TLS route on the publicly reachable proxy long before DNS is ready
+
+### Completed verification and retirement — September 10 UTC
+
+Origin certificate issuance recovered with Cloudflare proxying still enabled and Full (strict) preserved. No DNS-only workaround, custom certificate, or TLS verification bypass was needed. The origin serves a Let’s Encrypt YE1 certificate for `vibes.jwbaldwin.com`, valid through December 9, 2026; Kamal manages renewal. Avoid premature certificate attempts while DNS still points elsewhere, and honor ACME retry windows instead of repeatedly probing a pending origin.
+
+- Public and direct-origin HTTPS health checks returned 200; the public response passed through Cloudflare
+- The normal main deployment rerun completed successfully, including migrations, Kamal replacement, and the public health check: [run 34430446202](https://github.com/jwbaldwin/lv_cafe/actions/runs/34430446202)
+- Browser LiveView connected, station switching changed the video, and a feedback submission reached the database. Public HTTPS admin authentication passed
+- A playlist update through the app role and verified-TLS PgBouncer connection succeeded inside a rolled-back transaction. The exact feedback test row was removed afterward
+- Deleted Fly apps `vibes-cafe` and `vibes-cafe-db`, including their machines and database volume. Provider inventory confirms neither app remains; unrelated Fly applications remain intact
+- Removed the obsolete Fly certificate DNS record and repository `FLY_API_TOKEN` secret. Removed `fly.toml` and corrected the README deployment instructions
+- Consolidated credentials into two active 1Password items: `Vibes Production` (login and app credentials) and `Vibes GitHub Actions SSH` (native SSH key). The duplicate production secure note is archived
+
+Cloudflare now has exactly two Vibes records: proxied A `5.161.214.38` and proxied AAAA `2a01:4ff:f0:6671::1`, both with automatic TTL. Fly is no longer a rollback target or hosting dependency
