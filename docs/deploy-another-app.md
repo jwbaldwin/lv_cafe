@@ -84,7 +84,9 @@ Verify HTTPS, the health endpoint, assets, WebSocket/LiveView connection, authen
 
 Keep the old host available until the new deployment is verified. For Vibes, no database contents needed transfer. For a populated app, design the data cutover separately; DNS rollback alone will not copy new writes back to the old database
 
-After verification, remove temporary branch/build configuration, update the runbook with actual outcomes, and agree removal of the old app/database/resources so billing stops
+After verification and authorization, remove the old app/database/volumes, obsolete DNS validation records, deployment secrets and provider config so the old deployment cannot be triggered accidentally. Remove temporary credential copies and test data, close diagnostic tunnels, and update the runbook with actual outcomes. Keep credentials backed up in 1Password and CI before removing local copies.
+
+For Vibes, both A and AAAA remain Cloudflare-proxied with Full (strict). Let’s Encrypt issuance initially hit a failed-authorization limit because the HTTPS route was staged before DNS moved. Issuance later succeeded without disabling proxying. Coordinate DNS and certificate setup closely; honor retry windows and verify the actual origin certificate.
 
 ## Why Kamal here
 
