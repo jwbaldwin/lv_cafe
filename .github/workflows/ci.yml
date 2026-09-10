@@ -69,6 +69,7 @@ jobs:
           context: .
           platforms: linux/amd64
           push: true
+          labels: service=vibes
           tags: ghcr.io/jwbaldwin/vibes:${{ github.sha }}
           cache-from: type=registry,ref=ghcr.io/jwbaldwin/vibes:build-cache
           cache-to: type=registry,ref=ghcr.io/jwbaldwin/vibes:build-cache,mode=max

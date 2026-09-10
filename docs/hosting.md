@@ -60,3 +60,9 @@ No data export/import is needed. Existing migrations build the schema and load t
 - Share Kamal proxy by domain, using one Vibes hostname and no Annie-specific integrations
 - Build on GitHub Actions, cache Docker layers in GHCR, and serialize production deployments
 - Run schema changes over a direct Postgres connection before deployment; normal traffic uses PgBouncer
+
+## Credential records
+
+1Password Private: `Vibes Production` and `Vibes GitHub Actions SSH`. The existing `Vibes admin` entry remains unchanged. The database uses one `vibes_app` role for runtime and migrations
+
+See [Deploy another app](deploy-another-app.md) for the repeatable procedure and migration-specific lessons
