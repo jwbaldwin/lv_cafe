@@ -22,6 +22,10 @@ defmodule CafeWeb.Router do
   end
 
   scope "/", CafeWeb do
+    get "/healthz", HealthController, :show
+  end
+
+  scope "/", CafeWeb do
     pipe_through :browser
 
     live "/", RoomLive, :index
