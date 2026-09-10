@@ -76,7 +76,9 @@ Run a preflight container with the final image and runtime environment, publishi
 
 ## Cutover and verification
 
-Record the exact old DNS record, proxy status and TLS mode before editing. Change only the app's records; account for both A and AAAA records. Coordinate certificate issuance with DNS rather than weakening origin TLS
+Record the exact old DNS record, proxy status and TLS mode before editing. Change only the app's records; account for both A and AAAA records. Coordinate certificate issuance with DNS rather than weakening origin TLS. Cloudflare edits one record at a time: verify both target listeners first, then update A and AAAA consecutively. Preserve proxy status and verify the origin certificate afterward
+
+For an existing domain still pointing at the old host, the bootstrap can successfully start Kamal but fail its final public health check. Verify the new route and app directly on the server, complete DNS cutover, then verify the public endpoint and run the normal deployment again
 
 Verify HTTPS, the health endpoint, assets, WebSocket/LiveView connection, authentication and a representative database write. Watch container logs and measure memory while old and new containers overlap. Verify the next normal deployment uses the same workflow successfully
 
