@@ -1,0 +1,51 @@
+service: vibes
+image: jwbaldwin/vibes
+run_directory: /opt/kamal
+
+servers:
+  web:
+    hosts:
+      - <%= ENV.fetch("KAMAL_SERVER_IP") %>
+
+stop_timeout: 30
+drain_timeout: 30
+deploy_timeout: 60
+
+proxy:
+  ssl: true
+  forward_headers: true
+  host: <%= ENV.fetch("PHX_HOST") %>
+  app_port: 4000
+  healthcheck:
+    path: /healthz
+    interval: 3
+    timeout: 5
+
+registry:
+  server: ghcr.io
+  username: <%= ENV.fetch("KAMAL_REGISTRY_USERNAME") %>
+  password:
+    - KAMAL_REGISTRY_PASSWORD
+
+builder:
+  arch: amd64
+  cache:
+    type: registry
+    image: ghcr.io/jwbaldwin/vibes:build-cache
+    options: mode=max
+
+ssh:
+  user: deploy
+
+  forward_agent: false
+
+env:
+  clear:
+    PHX_SERVER: "true"
+    PHX_HOST: <%= ENV.fetch("PHX_HOST") %>
+    PORT: "4000"
+    POOL_SIZE: "5"
+  secret:
+    - DATABASE_URL
+    - SECRET_KEY_BASE
+    - ADMIN_PASSWORD

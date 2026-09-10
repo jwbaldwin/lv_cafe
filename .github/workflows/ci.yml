@@ -1,0 +1,138 @@
+name: CI and deploy
+on:
+  push:
+    branches:
+      - main
+      - jb/hetzner-migration
+  pull_request:
+  workflow_dispatch:
+    inputs:
+      setup:
+        description: Bootstrap the server before deploying
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+jobs:
+  test:
+    name: Test
+    runs-on: ubuntu-24.04
+    services:
+      postgres:
+        image: postgres:18.1-alpine
+        env:
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 5
+    steps:
+      - uses: actions/checkout@v7
+      - uses: erlef/setup-beam@v1
+        with:
+          otp-version: 29.0.3
+          elixir-version: 1.20.2
+      - uses: actions/cache@v4
+        with:
+          path: |
+            deps
+            _build
+          key: ${{ runner.os }}-mix-${{ hashFiles('mix.lock') }}
+      - run: mix deps.get
+      - run: mix format --check-formatted
+      - run: mix compile --warnings-as-errors
+      - run: mix test
+      - run: MIX_ENV=prod mix assets.deploy
+
+  build:
+    name: Build deployment image
+    if: github.event_name != 'pull_request'
+    needs: test
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@v7
+      - uses: docker/setup-buildx-action@v4
+      - uses: docker/login-action@v4
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ github.token }}
+      - uses: docker/build-push-action@v7
+        with:
+          context: .
+          platforms: linux/amd64
+          push: true
+          tags: ghcr.io/jwbaldwin/vibes:${{ github.sha }}
+          cache-from: type=registry,ref=ghcr.io/jwbaldwin/vibes:build-cache
+          cache-to: type=registry,ref=ghcr.io/jwbaldwin/vibes:build-cache,mode=max
+
+  deploy:
+    name: Deploy to Hetzner
+    if: github.event_name == 'workflow_dispatch' || (github.event_name == 'push' && github.ref == 'refs/heads/main')
+    needs: [test, build]
+    runs-on: ubuntu-24.04
+    environment: production
+    permissions:
+      contents: read
+      packages: write
+    concurrency:
+      group: vibes-production
+      cancel-in-progress: false
+    env:
+      KAMAL_SERVER_IP: ${{ secrets.KAMAL_SERVER_IP }}
+      KAMAL_REGISTRY_USERNAME: ${{ github.actor }}
+      KAMAL_REGISTRY_PASSWORD: ${{ github.token }}
+      PHX_HOST: ${{ vars.PHX_HOST }}
+      DATABASE_URL: ${{ secrets.DATABASE_URL }}
+      SECRET_KEY_BASE: ${{ secrets.SECRET_KEY_BASE }}
+      ADMIN_PASSWORD: ${{ secrets.ADMIN_PASSWORD }}
+    steps:
+      - uses: actions/checkout@v7
+      - uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: "3.3"
+          bundler-cache: true
+      - uses: erlef/setup-beam@v1
+        with:
+          otp-version: 29.0.3
+          elixir-version: 1.20.2
+      - uses: webfactory/ssh-agent@v0.10.0
+        with:
+          ssh-private-key: ${{ secrets.KAMAL_DEPLOY_SSH_PRIVATE_KEY }}
+      - name: Trust the deployment server
+        env:
+          SERVER_HOST_KEY: ${{ secrets.KAMAL_SERVER_HOST_KEY }}
+        run: |
+          mkdir -p ~/.ssh
+          printf '%s\n' "$SERVER_HOST_KEY" > ~/.ssh/known_hosts
+          chmod 600 ~/.ssh/known_hosts
+          printf 'Host *\n  StrictHostKeyChecking yes\n' > ~/.ssh/config
+          chmod 600 ~/.ssh/config
+      - name: Check deployment configuration
+        run: bundle exec kamal config > /dev/null
+      - run: mix deps.get --only prod
+        env:
+          MIX_ENV: prod
+      - name: Apply schema through the direct Postgres connection
+        env:
+          MIX_ENV: prod
+          DATABASE_URL: ${{ secrets.DIRECT_DATABASE_URL }}
+        run: mix ecto.migrate
+      - name: Build and deploy
+        env:
+          BOOTSTRAP: ${{ inputs.setup }}
+        run: |
+          if [ "$BOOTSTRAP" = "true" ]; then
+            bundle exec kamal setup --skip-push --version "$GITHUB_SHA"
+          else
+            bundle exec kamal deploy --skip-push --version "$GITHUB_SHA"
+          fi
+      - name: Verify the public application
+        run: curl --fail --retry 10 --retry-delay 3 "https://$PHX_HOST/healthz"
