@@ -66,3 +66,16 @@ No data export/import is needed. Existing migrations build the schema and load t
 1Password Private: `Vibes Production` and `Vibes GitHub Actions SSH`. The existing `Vibes admin` entry remains unchanged. The database uses one `vibes_app` role for runtime and migrations
 
 See [Deploy another app](deploy-another-app.md) for the repeatable procedure and migration-specific lessons
+
+## Migration record — September 9, 2026
+
+- Created the PlanetScale database and one app role, granted schema creation, and applied all existing migrations through the direct endpoint
+- Preserved the signing key and admin password; saved production credentials and the dedicated CI SSH key in 1Password and GitHub
+- Installed Docker from its official Ubuntu repository. Confirmed the old Caddy configuration served only a maintenance response before stopping it; saved `/etc/caddy/Caddyfile.before-vibes-kamal`
+- Verified the first release in a temporary container bound to server loopback. The homepage and database check returned 200, with about 171 MiB of idle container memory
+- Bootstrapped stock Kamal and its shared proxy through the manual CI workflow. The proxy passed the new app's database readiness check and registered the Vibes HTTPS route
+- The first bootstrap caught a missing `service=vibes` image label; the workflow now supplies it. Local proxy boot with a placeholder registry password also failed because Kamal always logs in; CI supplies its temporary GitHub token
+
+Cloudflare's original Vibes records were A `66.241.125.15` and AAAA `2a09:8280:1::65:e11e:0`, both proxied with automatic TTL. The target addresses are A `5.161.214.38` and AAAA `2a01:4ff:f0:6671::1`. The zone uses automatic Full (strict) TLS; Always Use HTTPS was off. Preserve both values for rollback and change both address families during cutover
+
+The old `_acme-challenge.vibes` CNAME points to `vibes.jwbaldwin.com.xdk0nn.flydns.net`. It belongs to Fly's certificate setup, not Kamal's HTTP challenge

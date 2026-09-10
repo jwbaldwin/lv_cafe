@@ -3,7 +3,6 @@ on:
   push:
     branches:
       - main
-      - jb/hetzner-migration
   pull_request:
   workflow_dispatch:
     inputs:
@@ -126,7 +125,7 @@ jobs:
           MIX_ENV: prod
           DATABASE_URL: ${{ secrets.DIRECT_DATABASE_URL }}
         run: mix ecto.migrate
-      - name: Build and deploy
+      - name: Deploy the checked image
         env:
           BOOTSTRAP: ${{ inputs.setup }}
         run: |
