@@ -10,6 +10,10 @@ on:
         description: Bootstrap the server before deploying
         type: boolean
         default: false
+      memory_benchmark:
+        description: Measure the candidate on Hetzner with isolated containers (non-main only)
+        type: boolean
+        default: false
       stations_cutover:
         description: Put only Vibes into maintenance for the destructive stations schema cutover
         type: boolean
@@ -49,6 +53,7 @@ jobs:
       - run: mix format --check-formatted
       - run: mix compile --warnings-as-errors
       - run: mix test
+      - run: node --test test/js/*.test.mjs
       - run: MIX_ENV=test mix run --no-start scripts/verify-station-migration.exs
         env:
           STATIONS_CUTOVER: "true"
@@ -146,6 +151,48 @@ jobs:
           docker run --rm --network host --env-file "$migration_env" "$image" /app/bin/cafe eval Cafe.Release.seed
           test "$(postgres --dbname=cafe -tAc 'SELECT COUNT(*) FROM schema_migrations')" -gt 0
           test "$(postgres --dbname=cafe -tAc 'SELECT COUNT(*) FROM stations')" -gt 0
+
+  memory-benchmark:
+    name: Measure isolated candidate on Hetzner
+    if: github.event_name == 'workflow_dispatch' && inputs.memory_benchmark && github.ref != 'refs/heads/main'
+    needs: [test, build, verify-release-migration]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    environment: production
+    permissions:
+      contents: read
+      packages: read
+    concurrency:
+      group: vibes-memory-benchmark
+      cancel-in-progress: false
+    steps:
+      - uses: actions/checkout@v7
+      - uses: webfactory/ssh-agent@v0.10.0
+        with:
+          ssh-private-key: ${{ secrets.KAMAL_DEPLOY_SSH_PRIVATE_KEY }}
+      - name: Trust the existing deployment server
+        env:
+          SERVER_HOST_KEY: ${{ secrets.KAMAL_SERVER_HOST_KEY }}
+        run: |
+          mkdir -p ~/.ssh
+          printf '%s\n' "$SERVER_HOST_KEY" > ~/.ssh/known_hosts
+          chmod 600 ~/.ssh/known_hosts
+          printf 'Host *\n  BatchMode yes\n  StrictHostKeyChecking yes\n' > ~/.ssh/config
+      - name: Measure listeners, edits, and overlapping candidate containers
+        env:
+          CANDIDATE_IMAGE: ghcr.io/jwbaldwin/vibes:${{ github.sha }}
+          MEMORY_BENCHMARK_SERVER: ${{ secrets.KAMAL_SERVER_IP }}
+          MEMORY_BENCHMARK_OUTPUT: artifacts/memory
+          KAMAL_REGISTRY_USERNAME: ${{ github.actor }}
+          KAMAL_REGISTRY_PASSWORD: ${{ github.token }}
+        run: scripts/measure-memory.sh
+      - name: Keep measurement results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: vibes-memory-${{ github.sha }}
+          path: artifacts/memory
+          if-no-files-found: warn
 
   deploy:
     name: Deploy to Hetzner

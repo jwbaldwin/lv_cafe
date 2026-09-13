@@ -39,8 +39,8 @@ rg -n --hidden \
   -g '!priv/static/images/themes/**' \
   -g '!docs/theme-images.md' \
   -g '!scripts/optimize_theme_images.sh' \
-  -e 'themes/.+\\.(png|gif|webp)' \
-  -e 'thumbs/.+\\.(png|gif|webp)' \
+  -e 'themes/.+\.(png|gif|webp)' \
+  -e 'thumbs/.+\.(png|gif|webp)' \
   lib assets config test
 ```
 
