@@ -24,33 +24,5 @@ defmodule Cafe.Repo.Migrations.AddCuration do
     end
 
     create index(:feedback, [:status, :inserted_at])
-
-    execute(
-      fn ->
-        catalog =
-          :cafe
-          |> :code.priv_dir()
-          |> Path.join("playlists.json")
-          |> File.read!()
-          |> Jason.decode!()
-
-        now = DateTime.utc_now() |> DateTime.truncate(:second)
-
-        rows =
-          for {theme, playlists} <- catalog, {name, videos} <- playlists do
-            %{
-              name: name,
-              theme: theme,
-              videos: videos,
-              lock_version: 1,
-              inserted_at: now,
-              updated_at: now
-            }
-          end
-
-        repo().insert_all("playlists", rows)
-      end,
-      fn -> :ok end
-    )
   end
 end

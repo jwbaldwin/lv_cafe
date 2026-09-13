@@ -75,7 +75,7 @@ defmodule CafeWeb.ThemeSwitcher do
               phx-target={@myself}
             >
               <img
-                src={~p"/images/themes/seasons/#{elem(season, 0)}/thumbs/1.gif"}
+                src={~p"/images/themes/seasons/#{elem(season, 0)}/thumbs/1.webp"}
                 alt={"#{elem(season, 0)} theme"}
                 decoding="async"
                 class={[
@@ -101,7 +101,7 @@ defmodule CafeWeb.ThemeSwitcher do
               phx-target={@myself}
             >
               <img
-                src={~p"/images/themes/vibes/#{elem(vibe, 0)}/thumbs/1.gif"}
+                src={~p"/images/themes/vibes/#{elem(vibe, 0)}/thumbs/1.webp"}
                 alt={"#{elem(vibe, 0)} theme"}
                 decoding="async"
                 class={[

@@ -33,7 +33,7 @@ Use two connection URLs with the same username/password:
 
 Keep verified TLS explicit in Ecto runtime config. Do not assume libpq query parameters in a provider URL configure Postgrex equivalently. Vibes uses `ssl: [verify: :verify_peer, cacerts: :public_key.cacerts_get()]`
 
-Run the existing migrations over the direct connection and verify the pooled connection separately. Starting from an empty database still needs schema creation and any initial catalog/seed data
+Build the release image first, then run its bundled migration command against the direct connection and verify the pooled connection separately. Starting from an empty database still needs schema creation and any initial catalog/seed data. Keep the migration container one-shot and remove its temporary environment file after it exits
 
 ## Secrets and access
 
@@ -60,9 +60,13 @@ Kamal proxy routes multiple apps by hostname. Each app can listen on container p
 
 Add `/healthz` outside the browser/session pipeline. It should verify the dependencies needed to serve the app, return 200 when ready, and avoid creating cookies. Vibes checks a database query
 
-Build Linux amd64 images on GitHub Actions, then deploy the exact commit tag using `kamal deploy --skip-push --version COMMIT`. When building outside Kamal, include the image label `service=APP_NAME`; Kamal checks this before booting. Cache Docker layers in GHCR. Serialize production deployments and do not cancel one midway through a rollout
+Build Linux amd64 images on GitHub Actions, then run the migration command from that exact image with `docker run --rm --env-file TEMP_FILE IMAGE /app/bin/migrate`. Keep the direct URL in a mode-0600 temporary file and remove it in an exit trap; do not pass it with `docker run -e` or in a command argument. Log out of GHCR after the one-off run. Then deploy the exact commit tag using `kamal deploy --skip-push --version COMMIT`. When building outside Kamal, include the image label `service=APP_NAME`; Kamal checks this before booting. Cache Docker layers in GHCR. Serialize production deployments and do not cancel one midway through a rollout
 
-Keep migrations compatible with the currently running app. Run schema changes before deployment so readiness checks see the initialized schema. A code rollback does not reverse a schema change
+Run the image migration twice against a disposable Postgres service in non-production workflows to exercise both a fresh database and an already migrated schema. Gate production deployment on that check and keep production credentials limited to the deployment environment.
+
+For a fresh database, run `/app/bin/cafe eval Cafe.Release.seed` from the checked release after migration. Keep catalog seeding separate from migrations so an existing database never receives an unexpected reset or replacement of administrator edits.
+
+Keep migrations compatible with the currently running app because the old container remains available while the migration runs. Use expand/contract steps and retain old tables or columns until the replacement is healthy; a code rollback does not reverse a schema change. For an unavoidable rename such as `playlists` to `stations`, make the migration refuse a populated catalog unless the operator starts a main-branch workflow dispatch with its explicit cutover input. That workflow puts only this app into Kamal maintenance, drains for the configured timeout, and stops its web container so existing admin WebSockets cannot write while the schema changes. The shared proxy remains available to other apps. If the migration fails, restart the old container after its transaction rolls back. If deployment fails after the schema change, keep this app unavailable and roll back the schema with the exact release image or fix forward before restoring old code. Run schema changes before deployment so readiness checks see the initialized schema. A failed migration must stop the deploy
 
 ## Server preparation
 
