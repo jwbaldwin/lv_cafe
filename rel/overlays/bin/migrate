@@ -1,5 +1,26 @@
 #!/bin/sh
 set -eu
 
+if [ -z "${DIRECT_DATABASE_URL:-}" ]; then
+  echo "DIRECT_DATABASE_URL is required for release migrations" >&2
+  exit 1
+fi
+
+stations_cutover="${STATIONS_CUTOVER:-false}"
+case "$stations_cutover" in
+  true|false)
+    export STATIONS_CUTOVER="$stations_cutover"
+    ;;
+  *)
+    echo "STATIONS_CUTOVER must be true or false" >&2
+    exit 1
+    ;;
+esac
+
+# Keep the direct endpoint out of argv. runtime.exs reads DATABASE_URL when the
+# release boots, so translate the purpose-specific secret in the environment.
+export DATABASE_URL="$DIRECT_DATABASE_URL"
+unset DIRECT_DATABASE_URL
+
 cd -P -- "$(dirname -- "$0")"
 exec ./cafe eval Cafe.Release.migrate

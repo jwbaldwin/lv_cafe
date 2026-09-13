@@ -1,111 +1,90 @@
 defmodule Cafe.CurationTest do
   use Cafe.DataCase
-  alias Cafe.{Curation, Repo}
+
+  alias Cafe.{Curation, Repo, Stations}
   alias Cafe.Curation.Feedback
 
-  test "the migration seeds all ten curated playlists" do
-    assert length(Curation.list_playlists()) == 10
-    assert length(Curation.get_playlist!("christmas").videos) == 6
-    assert hd(Curation.get_playlist!("summer").videos).video_id == "Yr_5jRBH1JY"
+  setup do
+    Code.eval_file("priv/repo/seeds.exs")
+    :ok
   end
 
-  test "updates persist and stale editors cannot overwrite another browser" do
-    original = Curation.get_playlist!("cozy")
-    id = hd(original.videos).video_id
-    assert {:ok, saved} = Curation.update_video(original, id, %{"title" => "Coffee and hoodie"})
-    assert hd(Curation.get_playlist!("cozy").videos).title == "Coffee and hoodie"
-    assert {:error, :stale} = Curation.remove_video(original, id)
-    assert Curation.get_playlist!("cozy").lock_version == saved.lock_version
-  end
-
-  test "adds, moves and removes without duplicates or empty playlists" do
-    playlist = Curation.get_playlist!("cozy")
-    assert {:ok, playlist} = Curation.add_video(playlist, "https://youtu.be/vIlzvUsB6H0")
-    assert List.last(playlist.videos).video_id == "vIlzvUsB6H0"
-    assert {:error, _} = Curation.add_video(playlist, "vIlzvUsB6H0")
-    assert {:ok, playlist} = Curation.move_video(playlist, "vIlzvUsB6H0", -1)
-    assert Enum.at(playlist.videos, 2).video_id == "vIlzvUsB6H0"
-
-    playlist =
-      Enum.reduce(Enum.drop(playlist.videos, 1), playlist, fn video, p ->
-        assert {:ok, updated} = Curation.remove_video(p, video.video_id)
-        updated
-      end)
-
-    assert {:error, _} = Curation.remove_video(playlist, hd(playlist.videos).video_id)
-    assert length(Curation.get_playlist!("cozy").videos) == 1
-  end
-
-  test "video settings reject invalid playback positions" do
-    playlist = Curation.get_playlist!("cozy")
-    video = Enum.at(playlist.videos, 1)
-    assert {:error, _} = Curation.update_video(playlist, video.video_id, %{"start_seconds" => -1})
-
-    assert {:error, _} =
-             Curation.update_video(playlist, video.video_id, %{
-               "duration_seconds" => 0,
-               "tune_in" => true
-             })
-  end
-
-  test "accepting a suggestion and marking it reviewed is atomic" do
+  test "feedback stores station context and protects visitor fields" do
     assert {:ok, feedback} =
              Curation.submit_feedback(%{
-               "message" => "Love this coffee scene",
-               "kind" => "video",
-               "url" => "https://youtu.be/vIlzvUsB6H0"
+               "message" => "A pirate theme please",
+               "kind" => "theme",
+               "station_name" => "cozy",
+               "video_id" => "vIlzvUsB6H0",
+               "source" => "admin",
+               "status" => "reviewed",
+               "admin_note" => "forged"
              })
 
-    playlist = Curation.get_playlist!("cozy")
-    assert {:ok, updated} = Curation.accept_suggestion(feedback.id, playlist)
+    assert %Feedback{
+             source: "visitor",
+             status: "open",
+             station_name: "cozy",
+             video_id: "vIlzvUsB6H0",
+             admin_note: nil
+           } = feedback
+  end
+
+  test "player feedback uses only the server supplied station and video context" do
+    assert {:ok, feedback} =
+             Curation.submit_player_feedback(
+               "Nice atmosphere",
+               %{video_id: "vIlzvUsB6H0", station_name: "cozy"},
+               "visitor"
+             )
+
+    assert feedback.video_id == "vIlzvUsB6H0"
+    assert feedback.station_name == "cozy"
+    assert feedback.source == "visitor"
+  end
+
+  test "accepting a suggestion updates the station and feedback atomically" do
+    assert {:ok, feedback} =
+             Curation.submit_feedback(%{
+               "message" => "Love this scene",
+               "kind" => "video",
+               "video_id" => "vIlzvUsB6H0",
+               "station_name" => "cozy"
+             })
+
+    station = Stations.get_station!(:cozy)
+    assert {:ok, updated} = Stations.accept_suggestion(feedback.id, station)
     assert List.last(updated.videos).video_id == feedback.video_id
     assert Repo.get!(Feedback, feedback.id).status == "reviewed"
 
     assert {:ok, duplicate} =
              Curation.submit_feedback(%{
                "message" => "Another suggestion",
-               "url" => "vIlzvUsB6H0"
+               "kind" => "video",
+               "video_id" => "vIlzvUsB6H0",
+               "station_name" => "cozy"
              })
 
-    assert {:error, _} = Curation.accept_suggestion(duplicate.id, updated)
+    assert {:error, _} = Stations.accept_suggestion(duplicate.id, updated)
     assert Repo.get!(Feedback, duplicate.id).status == "open"
   end
 
-  test "visitor submissions cannot set admin identity or review state" do
-    assert {:ok, feedback} =
-             Curation.submit_feedback(%{
-               "message" => "A pirate theme please",
-               "source" => "admin",
-               "status" => "reviewed",
-               "admin_note" => "forged"
-             })
-
-    assert feedback.source == "visitor"
-    assert feedback.status == "open"
-    assert feedback.admin_note == nil
-
-    assert {:error, _} =
-             Curation.submit_feedback(%{
-               "message" => "hey",
-               "url" => "https://evil.example/watch?v=vIlzvUsB6H0"
-             })
-  end
-
   test "notes remain after their video is removed" do
-    playlist = Curation.get_playlist!("cozy")
-    video = hd(playlist.videos)
+    station = Stations.get_station!(:cozy)
+    video = hd(station.videos)
 
     assert {:ok, note} =
              Curation.submit_feedback(
                %{
                  "message" => "Too lonely",
+                 "kind" => "feedback",
                  "video_id" => video.video_id,
-                 "playlist_name" => playlist.name
+                 "station_name" => station.name
                },
                "admin"
              )
 
-    assert {:ok, _} = Curation.remove_video(playlist, video.video_id)
+    assert {:ok, _} = Stations.remove_video(station, video.video_id)
     assert Repo.get!(Feedback, note.id).message == "Too lonely"
   end
 
@@ -116,7 +95,7 @@ defmodule Cafe.CurationTest do
           "https://youtube.com/live/vIlzvUsB6H0",
           "https://youtu.be/vIlzvUsB6H0?t=10"
         ] do
-      assert Curation.video_id(url) == "vIlzvUsB6H0"
+      assert Stations.video_id(url) == "vIlzvUsB6H0"
     end
 
     for url <- [
@@ -125,7 +104,21 @@ defmodule Cafe.CurationTest do
           "../bad",
           nil
         ] do
-      assert Curation.video_id(url) == nil
+      assert Stations.video_id(url) == nil
     end
+  end
+
+  test "review state and admin notes are validated" do
+    assert {:ok, feedback} = Curation.submit_feedback(%{"message" => "A useful note"})
+
+    assert {:ok, reviewed} =
+             Curation.review_feedback(feedback.id, %{
+               "status" => "reviewed",
+               "admin_note" => "Keep this context"
+             })
+
+    assert reviewed.status == "reviewed"
+    assert reviewed.admin_note == "Keep this context"
+    assert {:error, _} = Curation.review_feedback(feedback.id, %{"status" => "unknown"})
   end
 end

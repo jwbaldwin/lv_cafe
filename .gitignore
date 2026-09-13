@@ -37,3 +37,6 @@ npm-debug.log
 
 # Local-only scratch files.
 /.local/
+
+# Local measurement output.
+/artifacts/

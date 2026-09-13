@@ -8,9 +8,21 @@ defmodule Cafe.Release do
   def migrate do
     load_app()
 
-    for repo <- repos() do
+    Enum.each(repos(), fn repo ->
       {:ok, _, _} = Ecto.Migrator.with_repo(repo, &Ecto.Migrator.run(&1, :up, all: true))
-    end
+    end)
+  end
+
+  @doc "Seeds a freshly migrated database without starting the web endpoint."
+  def seed do
+    load_app()
+
+    Enum.each(repos(), fn repo ->
+      {:ok, _, _} =
+        Ecto.Migrator.with_repo(repo, fn _repo ->
+          Code.eval_file(Application.app_dir(@app, "priv/repo/seeds.exs"))
+        end)
+    end)
   end
 
   def rollback(repo, version) do
