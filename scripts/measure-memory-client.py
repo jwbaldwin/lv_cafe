@@ -23,7 +23,6 @@ import random
 import re
 import socket
 import ssl
-import statistics
 import sys
 import threading
 import time
@@ -207,13 +206,6 @@ def form_video_ids(source: str) -> List[str]:
             if value:
                 values.append(value)
     return values
-
-
-def initial_video_id(source: str) -> Optional[str]:
-    for tag, _ in parse_opening_tags(source):
-        if parse_attribute(tag, "id") == "youtube-player-container":
-            return parse_attribute(tag, "data-video-id")
-    return None
 
 
 class CookieJar:
@@ -999,14 +991,13 @@ def run_phase(args: argparse.Namespace) -> Dict[str, Any]:
         time.sleep(0.05)
 
     joined = sum(1 for listener in listeners if listener.joined)
-    failed_before_edit = sum(listener.failures for listener in listeners)
     if joined != len(listeners):
         start_event.set()
         for listener in listeners:
             listener.stop_event.set()
         for listener in listeners:
             listener.join(2.0)
-        timings, failures = metrics.snapshot()
+        _, failures = metrics.snapshot()
         return {
             "schema_version": 1,
             "phase_clients": args.clients,
@@ -1060,7 +1051,7 @@ def run_phase(args: argparse.Namespace) -> Dict[str, Any]:
     for listener in listeners:
         listener.join(args.timeout)
 
-    timings, failures = metrics.snapshot()
+    _, failures = metrics.snapshot()
     action_counts: Dict[str, int] = {}
     for listener in listeners:
         action_counts[listener.endpoint] = action_counts.get(listener.endpoint, 0) + listener.action_count

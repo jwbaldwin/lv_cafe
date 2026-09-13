@@ -19,12 +19,18 @@ postgres=postgres:18.1-alpine
 python=python:3.13-slim
 sampler=''
 cleanup() {
+  status=$?
   trap - EXIT INT TERM HUP
   if [[ -n "$sampler" ]]; then kill "$sampler" 2>/dev/null || true; wait "$sampler" 2>/dev/null || true; fi
   for container in "$app_a" "$app_b" "$pg"; do docker logs "$container" > "$work/results/$container.log" 2>&1 || true; done
   docker rm -f -v "$client" "$release_container" "$app_a" "$app_b" "$pg" >/dev/null 2>&1 || true
   docker network rm "$network" >/dev/null 2>&1 || true
+  remaining_containers=$(docker ps -aq --filter "label=vibes-memory=$prefix")
+  remaining_network=$(docker network ls -q --filter "name=^${network}$")
+  printf 'containers_remaining=%s\nnetwork_remaining=%s\n' "$remaining_containers" "$remaining_network" > "$work/results/cleanup-status.txt"
+  if [[ -n "$remaining_containers$remaining_network" ]]; then status=1; fi
   rm -rf "$work/docker" "$work/config.env" "$work/app.env" "$work/certs"
+  exit "$status"
 }
 trap cleanup EXIT
 trap 'exit 130' INT TERM HUP
@@ -35,6 +41,11 @@ available=$(awk '/MemAvailable:/ {print $2}' /proc/meminfo)
 [[ $(df -Pk /var/lib/docker | awk 'NR==2 {print $4}') -ge 2500000 ]] || { echo 'Insufficient disk headroom'; exit 1; }
 docker ps --filter label=service=vibes --format '{{json .}}' > "$work/results/production-before.jsonl"
 docker stats --no-stream --format '{{json .}}' > "$work/results/baseline-stats.jsonl"
+production=$(docker ps -q --filter label=service=vibes | head -n 1)
+if [[ -n "$production" ]]; then
+  docker image inspect "$(docker inspect --format '{{.Image}}' "$production")" --format '{{.Size}}' > "$work/results/production-image-bytes.txt"
+  docker exec "$production" sh -c 'du -sk /app/lib/cafe-*/priv/static/images/themes' > "$work/results/production-theme-kib.txt"
+fi
 cp /proc/meminfo "$work/results/baseline-meminfo.txt"
 printf '%s' "$KAMAL_REGISTRY_PASSWORD" | docker login ghcr.io -u "$KAMAL_REGISTRY_USERNAME" --password-stdin >/dev/null
 unset KAMAL_REGISTRY_PASSWORD
@@ -66,7 +77,7 @@ for attempt in {1..60}; do
 done
 docker exec "$pg" pg_isready -U postgres -d vibes_memory >/dev/null
 release() {
-  docker run --rm --name "$release_container" --label "service=$prefix" --network "$network" --memory 384m --cpus .5 --env-file "$work/app.env" -v "$work/certs/ca.crt:/etc/ssl/certs/ca-certificates.crt:ro" "$CANDIDATE_IMAGE" "$@"
+  docker run --rm --name "$release_container" --label "service=$prefix" --label "vibes-memory=$prefix" --network "$network" --memory 384m --cpus .5 --env-file "$work/app.env" -v "$work/certs/ca.crt:/etc/ssl/certs/ca-certificates.crt:ro" "$CANDIDATE_IMAGE" "$@"
 }
 release /app/bin/migrate > "$work/results/migration.log" 2>&1
 release /app/bin/cafe eval Cafe.Release.seed >> "$work/results/migration.log" 2>&1
@@ -89,7 +100,8 @@ docker exec "$app_a" sh -c 'du -sk /app/lib/cafe-*/priv/static/images/themes' > 
     phase=$(cat "$work/phase" 2>/dev/null || echo idle)
     available=$(awk '/MemAvailable:/ {print $2}' /proc/meminfo)
     printf '%s,%s,%s\n' "$(date -u +%FT%TZ)" "$phase" "$available" >> "$work/results/host-memory.csv"
-    docker stats --no-stream --format '{{json .}}' "$app_a" "$app_b" "$pg" "$client" 2>/dev/null | while IFS= read -r row; do printf '{"phase":"%s","stats":%s}\n' "$phase" "$row"; done >> "$work/results/container-stats.jsonl" || true
+    mapfile -t containers < <(docker ps -q --filter "label=vibes-memory=$prefix")
+    docker stats --no-stream --format '{{json .}}' "${containers[@]}" 2>/dev/null | while IFS= read -r row; do printf '{"phase":"%s","stats":%s}\n' "$phase" "$row"; done >> "$work/results/container-stats.jsonl" || true
     if [[ "$available" -lt 250000 ]]; then echo 'Host memory headroom below 250 MB' > "$work/results/pressure-abort.txt"; docker stop "$client" >/dev/null 2>&1 || true; exit 1; fi
     sleep 1
   done
@@ -109,6 +121,7 @@ phase() {
 }
 phase listeners-25 25 --endpoint "http://$app_a:4000"
 phase listeners-100 100 --endpoint "http://$app_a:4000"
+printf 'overlap-idle\n' > "$work/phase"
 start_app "$app_b"
 phase overlap-100 100 --endpoint "http://$app_a:4000" --endpoint "http://$app_b:4000"
 docker ps --filter label=service=vibes --format '{{json .}}' > "$work/results/production-after.jsonl"
