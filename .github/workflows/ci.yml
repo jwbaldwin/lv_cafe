@@ -19,6 +19,12 @@ on:
         type: boolean
         default: false
 
+# Serialize reruns of the same commit so its image tag cannot change between
+# build, verification, and deployment within this workflow.
+concurrency:
+  group: vibes-ci-${{ github.event.pull_request.head.sha || github.sha }}
+  cancel-in-progress: false
+
 permissions:
   contents: read
 jobs:
@@ -196,7 +202,7 @@ jobs:
 
   deploy:
     name: Deploy to Hetzner
-    if: (github.event_name == 'push' && github.ref == 'refs/heads/main') || (github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main')
+    if: (github.event_name == 'push' && github.ref == 'refs/heads/main') || (github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main' && inputs.memory_benchmark != true)
     needs: [test, build, verify-release-migration]
     runs-on: ubuntu-24.04
     environment: production

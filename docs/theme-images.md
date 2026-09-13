@@ -20,7 +20,7 @@ Every source thumbnail was checked with `ffprobe`: each is a single-frame GIF, w
 
 The final tree is 0.0573% of the measured starting size, a 99.9427% reduction. The large reduction comes from deleting the orphaned full-size PNGs and extra thumbnail GIFs; converting the referenced GIFs saves 15,568 bytes while preserving their pixels.
 
-The commonly quoted `~205 MB` figure does not match this checkout's source asset tree: the exact pre-cleanup tree measured 106,895,039 bytes (101.94 MiB). That larger figure can include Git history or generated copies; this inventory and reduction measure the checked-out `priv/static/images/themes` files only.
+The commonly quoted `~205 MB` figure does not match this checkout's source asset tree: the exact pre-cleanup tree measured 106,895,039 bytes (101.94 MiB). The Hetzner release measurement confirms a 209,044 KiB (204.1 MiB) deployed directory, including generated copies, versus 268 KiB after cleanup. This inventory and reduction measure the checked-out source files only. The full Docker image shrank from 643,253,424 to 215,943,801 bytes uncompressed; see the [memory and deployment measurements](memory-measurement.md).
 
 ## Reproducing the thumbnail conversion
 

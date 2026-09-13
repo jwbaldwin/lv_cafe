@@ -21,4 +21,17 @@ For a manual run, first configure the existing SSH agent and pinned known_hosts 
 
 ## Results
 
-The measured candidate results will be recorded here after the isolated Hetzner run passes.
+Measured on 2026-09-13 UTC on the existing 2-CPU, 1.875-GiB Hetzner host, using candidate `188bfdf2e69ebb1516b1e10b3d287ca897a06e57`. [The complete workflow passed](https://github.com/jwbaldwin/lv_cafe/actions/runs/34732924776); its artifact contains the raw samples, client reports, and cleanup verification. A durable [measurement summary](measurements/2026-09-13.json) is checked in here.
+
+| Scenario | Peak candidate A | Peak candidate B | Minimum host available |
+| --- | ---: | ---: | ---: |
+| Fresh candidate idle | 145.0 MiB | — | 1,036 MiB |
+| 25 listeners + edits | 151.8 MiB | — | 1,028 MiB |
+| 100 listeners + edits | 239.8 MiB | — | 936 MiB |
+| 100 listeners across two candidates + edits | 180.9 MiB | 172.7 MiB | 812 MiB |
+
+All 25/100/100 listener joins, 2,400 playback/station actions, and four admin edits passed, including saved-data readback and player refresh assertions. There were no client failures. The disposable database peaked at 61.12 MiB and the load client at 36.88 MiB. Existing production stayed on the same running container and image; its baseline was about 168 MiB. Cleanup verified zero remaining task containers or networks.
+
+These are short scenario tests, not a long soak or a maximum-throughput claim. Candidates were each capped at 0.5 CPU and 384 MiB; the extra database and load client also ran on the host. The measured headroom supports leaving production memory settings unchanged for the current small audience.
+
+The Docker image decreased from 643,253,424 to 215,943,801 bytes uncompressed (66.4%). The deployed theme directory decreased from 209,044 KiB to 268 KiB of allocated disk space; the source-file comparison is documented in the theme image guide.
