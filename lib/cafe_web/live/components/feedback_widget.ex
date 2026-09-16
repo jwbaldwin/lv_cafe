@@ -33,8 +33,8 @@ defmodule CafeWeb.FeedbackWidget do
       true ->
         # Context comes from the current server-side station, never submitted fields.
         context = %{
-          video_id: socket.assigns.station.video_id,
-          playlist_name: socket.assigns.station.name
+          video_id: socket.assigns.playback.video_id,
+          station_name: socket.assigns.station.name
         }
 
         case Cafe.Curation.submit_player_feedback(

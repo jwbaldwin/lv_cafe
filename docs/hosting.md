@@ -6,7 +6,7 @@ Vibes runs as a Docker container on the existing Ubuntu 24.04 Hetzner server, ma
 
 The Kamal service and image are `vibes` and `ghcr.io/jwbaldwin/vibes`. The internal Elixir release remains `cafe`. Port 4000 is reachable inside the Docker network, with no published app port. Kamal proxy routes each domain to its own app, allowing other Kamal services on this server without allocating separate host ports.
 
-Database: PlanetScale `weirdbit/vibes`, Postgres 18, PS-5 single node in us-east-1, $5/month base price. Storage is capped at the included 10 GB. App traffic uses included PgBouncer on 6432 with a five-connection Ecto pool. Schema changes run from CI through the direct endpoint on 5432 with verified TLS.
+Database: PlanetScale `weirdbit/vibes`, Postgres 18, PS-5 single node in us-east-1, $5/month base price. Storage is capped at the included 10 GB. App traffic uses included PgBouncer on 6432 with a five-connection Ecto pool. Schema changes run from the exact release image in CI through the direct endpoint on 5432 with verified TLS.
 
 ## GitHub production environment
 
@@ -33,7 +33,21 @@ Install the Gemfile with Bundler and run commands with `bundle exec`. Normal dep
 - Logs: `bundle exec kamal app logs`
 - Rollback: `bundle exec kamal rollback VERSION`
 
-Schema changes run before app deployment so the readiness check can query the new database. Keep future migrations compatible with the running app; a code rollback does not undo schema changes. Cafe.Release.migrate remains available for release-based operations, but must use a direct database connection.
+Schema changes run before app deployment so the readiness check can query the new database. Keep future migrations compatible with the running app; a code rollback does not undo schema changes. Cafe.Release.migrate remains available for release-based operations, but the checked-in migration wrapper requires a direct database connection.
+
+## Release-image migrations
+
+The deploy job logs in to GHCR, pulls `ghcr.io/jwbaldwin/vibes:${GITHUB_SHA}`, and runs `/app/bin/migrate` from that image before invoking Kamal. The migration receives `DIRECT_DATABASE_URL` and `SECRET_KEY_BASE` through a mode-0600 temporary environment file on the GitHub runner. The file is removed and the runner logs out of GHCR when the step exits; Docker's `--rm` removes the one-off container. The direct URL is never put in a command argument or the Kamal configuration, and the runtime app continues to receive only the PgBouncer `DATABASE_URL`.
+
+Non-pull-request workflows also run that exact image twice against a disposable Postgres service before production deployment: the first pass exercises a fresh schema and the second pass exercises an already migrated schema. That check uses test-only credentials and does not load the production environment.
+
+For a fresh disposable database or a new installation, load the catalog only after migrations with `/app/bin/cafe eval Cafe.Release.seed`. Seeds are separate from schema migrations, are safe to rerun, and do not run as part of a production deploy against an existing catalog.
+
+The migration step uses `set -euo pipefail`, so a failed migration prevents `kamal setup` or `kamal deploy` from running. Kamal then deploys the same `${GITHUB_SHA}` with `--skip-push --version`, preserving its normal deploy lock, proxy health check, and old-container drain behavior. Workflow runs for the same commit are serialized so a concurrent rebuild cannot replace its image tag during verification or deployment. A measurement-only dispatch also cannot deploy. A workflow dispatch from a non-main ref builds its candidate image but cannot run the production deploy job; production dispatches must target `main`.
+
+The migration runs while the currently running web container may still serve requests. Migrations therefore follow an expand/contract contract: add new tables or columns first, keep the old `playlists` shape readable and writable (or dual-write it) until the replacement is healthy, and remove old names only in a later release. The stations consolidation is the deliberate exception: a populated legacy catalog refuses to migrate unless the workflow dispatch sets `stations_cutover=true`.
+
+Run that one-time cutover from `main` with `stations_cutover=true`. The workflow asks Kamal to put only Vibes into maintenance, waits up to the configured 30-second drain timeout, and then stops only the Vibes web container. This closes existing application connections, including admin WebSockets, before the destructive rename; the shared kamal-proxy container and other apps remain up. If the migration fails, Ecto rolls back its transaction and the workflow starts the old container and resumes its Vibes route. If deployment or health checks fail after the schema change, Vibes stays unavailable and the workflow prints recovery instructions; roll the schema back with the exact release image or fix forward before restoring an older release that expects `playlists`.
 
 `/healthz` checks a real database query without creating a browser session. It is public and outside the browser pipeline so deployment probes avoid session/CSRF work. Kamal keeps the old container until the replacement passes its health check. Shutdown and proxy draining use 30-second timeouts.
 
@@ -48,7 +62,7 @@ Schema changes run before app deployment so the readiness check can query the ne
 7. Verify a second deployment, proxy routing, and memory during overlapping containers
 8. Retain the old host until cutover is verified, then remove only the retired app and database after authorization
 
-No data export/import was needed. Existing migrations built the schema and loaded the bundled playlist catalog. Fly has now been retired; future code rollbacks use Kamal and the existing PlanetScale database.
+No data export/import was needed. Existing migrations built the schema; a fresh database receives the bundled station catalog through the separate release seed command. Fly has now been retired; future code rollbacks use Kamal and the existing PlanetScale database.
 
 ## Changes from Annie's deployment
 
@@ -59,7 +73,8 @@ No data export/import was needed. Existing migrations built the schema and loade
 - Disable SSH agent forwarding and require the pinned host key
 - Share Kamal proxy by domain, using one Vibes hostname and no Annie-specific integrations
 - Build on GitHub Actions, cache Docker layers in GHCR, and serialize production deployments
-- Run schema changes over a direct Postgres connection before deployment; normal traffic uses PgBouncer
+- Run the exact release image's schema changes over a direct Postgres connection before deployment; normal traffic uses PgBouncer
+- Require `stations_cutover=true` for the one-time destructive catalog rename, drain and stop only Vibes before it runs, and keep the shared proxy available
 
 ## Credential records
 

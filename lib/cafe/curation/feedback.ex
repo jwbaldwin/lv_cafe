@@ -1,4 +1,6 @@
 defmodule Cafe.Curation.Feedback do
+  @moduledoc "A visitor or admin note attached to a station and optional video."
+
   use Ecto.Schema
   import Ecto.Changeset
 
@@ -6,7 +8,7 @@ defmodule Cafe.Curation.Feedback do
     field :message, :string
     field :kind, :string, default: "feedback"
     field :video_id, :string
-    field :playlist_name, :string
+    field :station_name, :string
     field :source, :string, default: "visitor"
     field :status, :string, default: "open"
     field :admin_note, :string
@@ -15,11 +17,11 @@ defmodule Cafe.Curation.Feedback do
 
   def changeset(feedback, attrs) do
     feedback
-    |> cast(attrs, [:message, :kind, :video_id, :playlist_name])
+    |> cast(attrs, [:message, :kind, :video_id, :station_name])
     |> update_change(:message, &String.trim/1)
     |> validate_required([:message, :kind])
     |> validate_length(:message, min: 3, max: 4000)
-    |> validate_length(:playlist_name, max: 60)
+    |> validate_length(:station_name, max: 60)
     |> validate_inclusion(:kind, ~w(feedback video theme))
     |> validate_format(:video_id, ~r/\A[A-Za-z0-9_-]{11}\z/)
   end

@@ -46,9 +46,9 @@ defmodule CafeWeb.Components.PlayerControls do
             </svg>
           </button>
         <% end %>
-        <div class="station-buttons px-2">
+        <div class="video-buttons px-2">
           <button
-            phx-click="prev_station"
+            phx-click="prev_video"
             phx-window-keyup="control_keypress"
             phx-key="ArrowLeft"
             phx-target={@myself}
@@ -69,7 +69,7 @@ defmodule CafeWeb.Components.PlayerControls do
             </svg>
           </button>
           <button
-            phx-click="next_station"
+            phx-click="next_video"
             phx-window-keyup="control_keypress"
             phx-key="ArrowRight"
             phx-target={@myself}
@@ -149,18 +149,18 @@ defmodule CafeWeb.Components.PlayerControls do
     """
   end
 
-  def handle_event("next_station", _params, socket), do: change_station(socket, 1)
-  def handle_event("prev_station", _params, socket), do: change_station(socket, -1)
+  def handle_event("next_video", _params, socket), do: change_video(socket, 1)
+  def handle_event("prev_video", _params, socket), do: change_video(socket, -1)
 
   def handle_event("control_keypress", %{"key" => key}, socket) do
     case key do
-      "ArrowLeft" -> change_station(socket, -1)
-      "ArrowRight" -> change_station(socket, 1)
+      "ArrowLeft" -> change_video(socket, -1)
+      "ArrowRight" -> change_video(socket, 1)
       _ -> {:noreply, socket}
     end
   end
 
-  defp change_station(socket, direction) do
+  defp change_video(socket, direction) do
     send(self(), {:change_video, socket.assigns.position + direction, socket.assigns.volume})
     {:noreply, socket}
   end

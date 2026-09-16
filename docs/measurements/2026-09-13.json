@@ -1,0 +1,95 @@
+{
+  "measured_at_utc": "2026-09-13",
+  "candidate_commit": "188bfdf2e69ebb1516b1e10b3d287ca897a06e57",
+  "workflow": "https://github.com/jwbaldwin/lv_cafe/actions/runs/34732924776",
+  "host_cpus": 2,
+  "host_memory_gib": 1.875,
+  "duration_seconds_per_phase": 25,
+  "peak_container_memory_mib": {
+    "idle": {
+      "a": 145.0,
+      "pg": 47.03
+    },
+    "listeners-25": {
+      "client": 28.09,
+      "a": 151.8,
+      "pg": 49.64
+    },
+    "listeners-100": {
+      "client": 36.88,
+      "a": 239.8,
+      "pg": 49.97
+    },
+    "overlap-idle": {
+      "b": 145.2,
+      "a": 189.4,
+      "pg": 59.41
+    },
+    "overlap-100": {
+      "client": 36.46,
+      "b": 172.7,
+      "a": 180.9,
+      "pg": 61.12
+    }
+  },
+  "minimum_host_available_mib": {
+    "idle": 1035.86,
+    "listeners-25": 1027.63,
+    "listeners-100": 936.22,
+    "overlap-idle": 902.21,
+    "overlap-100": 811.63
+  },
+  "phases": {
+    "listeners-25": {
+      "listeners": {
+        "expected": 25,
+        "failed": 0,
+        "joined": 25
+      },
+      "assertions": {
+        "admin_edits_ok": true,
+        "all_listeners_joined": true,
+        "listener_refresh": true
+      },
+      "actions": 300,
+      "failures": [],
+      "admin_edits": 1
+    },
+    "listeners-100": {
+      "listeners": {
+        "expected": 100,
+        "failed": 0,
+        "joined": 100
+      },
+      "assertions": {
+        "admin_edits_ok": true,
+        "all_listeners_joined": true,
+        "listener_refresh": true
+      },
+      "actions": 1000,
+      "failures": [],
+      "admin_edits": 1
+    },
+    "overlap-100": {
+      "listeners": {
+        "expected": 100,
+        "failed": 0,
+        "joined": 100
+      },
+      "assertions": {
+        "admin_edits_ok": true,
+        "all_listeners_joined": true,
+        "listener_refresh": true
+      },
+      "actions": 1100,
+      "failures": [],
+      "admin_edits": 2
+    }
+  },
+  "production_image_bytes": 643253424,
+  "candidate_image_bytes": 215943801,
+  "production_theme_disk_kib": 209044,
+  "candidate_theme_disk_kib": 268,
+  "production_container_unchanged": true,
+  "task_containers_and_network_removed": true
+}

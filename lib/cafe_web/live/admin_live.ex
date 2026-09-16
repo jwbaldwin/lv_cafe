@@ -1,24 +1,28 @@
 defmodule CafeWeb.AdminLive do
   use CafeWeb, :live_view
-  alias Cafe.Curation
+  alias Cafe.{Curation, Stations}
 
   def mount(_params, _session, socket) do
-    {:ok,
-     assign(socket, playlists: Curation.list_playlists(), verification: nil, preview_id: nil)}
+    {:ok, assign(socket, verification: nil, preview_id: nil)}
   end
 
   def handle_params(params, _uri, socket) do
-    playlist = Curation.get_playlist(params["theme"] || "cozy") || hd(Curation.list_playlists())
+    stations = Stations.list_stations()
+
+    station =
+      Enum.find(stations, &(&1.name == (params["station"] || "cozy"))) || List.first(stations)
 
     status =
       if params["status"] in ~w(open included dismissed all), do: params["status"], else: "open"
 
-    view = if params["view"] == "inbox", do: "inbox", else: "playlists"
+    view = if params["view"] == "inbox", do: "inbox", else: "stations"
 
     {:noreply,
      socket
      |> assign(
-       playlist: playlist,
+       station: station,
+       station_name: if(station, do: station.name, else: "cozy"),
+       stations: stations,
        status: status,
        view: view,
        preview_id: nil,
@@ -29,45 +33,45 @@ defmodule CafeWeb.AdminLive do
      |> push_event("pause_preview", %{})}
   end
 
-  def handle_event("select", %{"theme" => theme}, socket) do
-    {:noreply, push_patch(socket, to: ~p"/admin?theme=#{theme}&status=#{socket.assigns.status}")}
+  def handle_event("select", %{"station" => name}, socket) do
+    {:noreply, push_patch(socket, to: ~p"/admin?station=#{name}&status=#{socket.assigns.status}")}
   end
 
   def handle_event("filter", %{"status" => status}, socket) do
     {:noreply,
      push_patch(socket,
-       to: ~p"/admin?view=inbox&theme=#{socket.assigns.playlist.name}&status=#{status}"
+       to: ~p"/admin?view=inbox&station=#{socket.assigns.station_name}&status=#{status}"
      )}
   end
 
   def handle_event("add", %{"url" => url}, socket),
-    do: finish(socket, Curation.add_video(socket.assigns.playlist, url))
+    do: finish(socket, Stations.add_video(socket.assigns.station, url))
 
   def handle_event("remove", %{"id" => id}, socket),
-    do: finish(socket, Curation.remove_video(socket.assigns.playlist, id))
+    do: finish(socket, Stations.remove_video(socket.assigns.station, id))
 
   def handle_event("move", %{"id" => id, "direction" => direction}, socket)
       when direction in ["-1", "1"],
       do:
         finish(
           socket,
-          Curation.move_video(socket.assigns.playlist, id, String.to_integer(direction))
+          Stations.move_video(socket.assigns.station, id, String.to_integer(direction))
         )
 
   def handle_event("save_video", %{"_id" => id, "video" => attrs}, socket) do
     attrs = Map.take(attrs, ~w(title start_seconds duration_seconds tune_in))
-    finish(socket, Curation.update_video(socket.assigns.playlist, id, attrs))
+    finish(socket, Stations.update_video(socket.assigns.station, id, attrs))
   end
 
   def handle_event("preview", %{"id" => id}, socket) do
-    case Enum.find(socket.assigns.playlist.videos, &(&1.video_id == id)) do
+    case Enum.find(socket.assigns.station.videos, &(&1.video_id == id)) do
       nil ->
         {:noreply, socket}
 
       video ->
         payload = %{
           video_id: id,
-          start_seconds: Cafe.Stations.playback_start(Cafe.Curation.Video.to_map(video))
+          start_seconds: Stations.playback_start(video)
         }
 
         {:noreply,
@@ -109,7 +113,7 @@ defmodule CafeWeb.AdminLive do
             do: Map.merge(data, %{"start_seconds" => 0, "tune_in" => false}),
             else: data
 
-        finish(socket, Curation.update_video(socket.assigns.playlist, data["video_id"], attrs))
+        finish(socket, Stations.update_video(socket.assigns.station, data["video_id"], attrs))
     end
   end
 
@@ -117,7 +121,7 @@ defmodule CafeWeb.AdminLive do
     attrs = %{
       "message" => message,
       "video_id" => id,
-      "playlist_name" => socket.assigns.playlist.name
+      "station_name" => socket.assigns.station.name
     }
 
     case Curation.submit_feedback(attrs, "admin") do
@@ -148,12 +152,12 @@ defmodule CafeWeb.AdminLive do
     end
   end
 
-  defp finish(socket, {:ok, playlist}) do
+  defp finish(socket, {:ok, station}) do
     {:noreply,
      socket
-     |> assign(:playlist, playlist)
-     |> assign(:playlists, Curation.list_playlists())
-     |> put_flash(:info, "Saved. The playlist is updated for listeners.")
+     |> assign(:station, station)
+     |> assign(:stations, Stations.list_stations())
+     |> put_flash(:info, "Saved. The station is updated for listeners.")
      |> clear_flash(:error)}
   end
 
@@ -161,13 +165,13 @@ defmodule CafeWeb.AdminLive do
     message =
       case reason do
         :stale ->
-          "This playlist changed in another browser. Latest version loaded; please reapply your edit."
+          "This station changed in another browser. Latest version loaded; please reapply your edit."
 
         :invalid_url ->
           "Enter a valid YouTube URL or video ID."
 
         :edge ->
-          "This video is already at the edge of the playlist."
+          "This video is already at the edge of the station."
 
         _ ->
           "Could not save: keep at least one video, avoid duplicates, and check the duration and start offset."
@@ -175,7 +179,7 @@ defmodule CafeWeb.AdminLive do
 
     {:noreply,
      socket
-     |> assign(:playlist, Curation.get_playlist!(socket.assigns.playlist.name))
+     |> assign(:station, Stations.get_station!(socket.assigns.station.name))
      |> put_flash(:error, message)}
   end
 
@@ -186,7 +190,7 @@ defmodule CafeWeb.AdminLive do
 
   defp feedback_text(entries) do
     Enum.map_join(entries, "\n\n", fn f ->
-      "## Feedback on #{f.playlist_name || "General"}\n" <>
+      "## Feedback on #{f.station_name || "General"}\n" <>
         "From: #{f.source}\nSent: #{DateTime.to_iso8601(f.inserted_at)}\n" <>
         if(f.video_id,
           do: "Playing video: https://www.youtube.com/watch?v=#{f.video_id}\n",
@@ -213,11 +217,11 @@ defmodule CafeWeb.AdminLive do
       </header>
       <nav class="curation-tabs" aria-label="Admin sections">
         <.link
-          patch={~p"/admin?view=playlists&theme=#{@playlist.name}&status=#{@status}"}
-          aria-current={if @view == "playlists", do: "page"}
-        >Playlists</.link>
+          patch={~p"/admin?view=stations&station=#{@station_name}&status=#{@status}"}
+          aria-current={if @view == "stations", do: "page"}
+        >Stations</.link>
         <.link
-          patch={~p"/admin?view=inbox&theme=#{@playlist.name}&status=#{@status}"}
+          patch={~p"/admin?view=inbox&station=#{@station_name}&status=#{@status}"}
           aria-current={if @view == "inbox", do: "page"}
         >Inbox</.link>
       </nav>
@@ -227,30 +231,31 @@ defmodule CafeWeb.AdminLive do
       <p :if={Phoenix.Flash.get(@flash, :error)} class="curation-notice curation-error" role="alert">
         {Phoenix.Flash.get(@flash, :error)}
       </p>
-      <section hidden={@view != "playlists"} aria-label="Playlists">
+      <p :if={!@station && @view == "stations"} role="status">No stations are available yet.</p>
+      <section :if={@station} hidden={@view != "stations"} aria-label="Stations">
         <div class="curation-page-heading">
           <div>
-            <h1>Playlists</h1><p>Choose a theme, listen, and fine-tune the lineup.</p>
+            <h1>Stations</h1><p>Choose a station, listen, and fine-tune the lineup.</p>
           </div><span class="curation-status">Changes go live when saved</span>
         </div>
         <div class="curation-workspace">
           <aside class="curation-sidebar">
-            <h2>Themes</h2>
-            <nav aria-label="Playlist themes">
+            <h2>Stations</h2>
+            <nav aria-label="Stations">
               <.link
-                :for={p <- @playlists}
-                patch={~p"/admin?view=playlists&theme=#{p.name}&status=#{@status}"}
-                aria-current={if p.name == @playlist.name, do: "page"}
+                :for={p <- @stations}
+                patch={~p"/admin?view=stations&station=#{p.name}&status=#{@status}"}
+                aria-current={if p.name == @station_name, do: "page"}
               >
                 <span>{String.replace(p.name, "_", " ")}</span><span>{length(
-                  if p.name == @playlist.name, do: @playlist.videos, else: p.videos
+                  if p.name == @station_name, do: @station.videos, else: p.videos
                 )}</span>
               </.link>
             </nav>
           </aside>
-          <section class="curation-playlist" aria-label="Selected playlist">
+          <section class="curation-station" aria-label="Selected station">
             <div class="curation-section-heading">
-              <h2>{String.replace(@playlist.name, "_", " ")}</h2><span>{length(@playlist.videos)} videos · playback order</span>
+              <h2>{String.replace(@station_name, "_", " ")}</h2><span>{length(@station.videos)} videos · playback order</span>
             </div>
             <details class="curation-add">
               <summary>+ Add a video</summary>
@@ -260,14 +265,14 @@ defmodule CafeWeb.AdminLive do
                   type="text"
                   placeholder="https://youtube.com/watch?v=…"
                   required
-                /></label><button type="submit" class="curation-primary">Add to playlist</button>
+                /></label><button type="submit" class="curation-primary">Add to station</button>
               </.form>
             </details>
             <.video_card
-              :for={{video, index} <- Enum.with_index(@playlist.videos)}
+              :for={{video, index} <- Enum.with_index(@station.videos)}
               video={video}
               index={index}
-              playlist={@playlist}
+              station={@station}
               preview_id={@preview_id}
             />
           </section>
@@ -351,7 +356,7 @@ defmodule CafeWeb.AdminLive do
           loading="lazy"
         />
         <div>
-          <h3>{@video.title || @video.video_id}</h3><small>{@index + 1}/{length(@playlist.videos)} · {if @video.live,
+          <h3>{@video.title || @video.video_id}</h3><small>{@index + 1}/{length(@station.videos)} · {if @video.live,
             do: "Live at last check",
             else: if(@video.verified_at, do: "Recording · embed checked", else: "Not yet verified")}</small>
         </div>
@@ -383,15 +388,15 @@ defmodule CafeWeb.AdminLive do
             phx-click="move"
             phx-value-id={@video.video_id}
             phx-value-direction="1"
-            disabled={@index == length(@playlist.videos) - 1}
+            disabled={@index == length(@station.videos) - 1}
             aria-label="Move down"
           >↓</button>
           <button
             phx-click="remove"
             phx-value-id={@video.video_id}
-            disabled={length(@playlist.videos) == 1}
+            disabled={length(@station.videos) == 1}
             class="curation-danger"
-          >Remove from playlist</button>
+          >Remove from station</button>
         </div>
         <.form for={%{}} phx-submit="save_video" id={"settings-#{@video.video_id}"}>
           <input type="hidden" name="_id" value={@video.video_id} />
@@ -448,7 +453,7 @@ defmodule CafeWeb.AdminLive do
       <div class="curation-feedback-context">
         <h3>Feedback metadata</h3>
         <dl>
-          <dt>Theme</dt><dd>{String.replace(@entry.playlist_name || "Not recorded", "_", " ")}</dd>
+          <dt>Station</dt><dd>{String.replace(@entry.station_name || "Not recorded", "_", " ")}</dd>
           <dt>Playing video</dt><dd>
             <a
               :if={@entry.video_id}

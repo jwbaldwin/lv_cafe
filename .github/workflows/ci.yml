@@ -10,6 +10,20 @@ on:
         description: Bootstrap the server before deploying
         type: boolean
         default: false
+      memory_benchmark:
+        description: Measure the candidate on Hetzner with isolated containers (non-main only)
+        type: boolean
+        default: false
+      stations_cutover:
+        description: Put only Vibes into maintenance for the destructive stations schema cutover
+        type: boolean
+        default: false
+
+# Serialize reruns of the same commit so its image tag cannot change between
+# build, verification, and deployment within this workflow.
+concurrency:
+  group: vibes-ci-${{ github.event.pull_request.head.sha || github.sha }}
+  cancel-in-progress: false
 
 permissions:
   contents: read
@@ -45,6 +59,10 @@ jobs:
       - run: mix format --check-formatted
       - run: mix compile --warnings-as-errors
       - run: mix test
+      - run: node --test test/js/*.test.mjs
+      - run: MIX_ENV=test mix run --no-start scripts/verify-station-migration.exs
+        env:
+          STATIONS_CUTOVER: "true"
       - run: MIX_ENV=prod mix assets.deploy
 
   build:
@@ -73,10 +91,119 @@ jobs:
           cache-from: type=registry,ref=ghcr.io/jwbaldwin/vibes:build-cache
           cache-to: type=registry,ref=ghcr.io/jwbaldwin/vibes:build-cache,mode=max
 
+  verify-release-migration:
+    name: Verify release-image migrations
+    if: github.event_name != 'pull_request'
+    needs: [test, build]
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+      packages: read
+    services:
+      postgres:
+        image: postgres:18.1-alpine
+        env:
+          POSTGRES_DB: cafe
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d cafe"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 5
+    steps:
+      - uses: docker/login-action@v4
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ github.token }}
+      - name: Run the release migration twice against disposable Postgres
+        env:
+          # The local disposable service has no trusted certificate; production
+          # migrations use the verified-TLS DIRECT_DATABASE_URL secret below.
+          DIRECT_DATABASE_URL: ecto://postgres:postgres@127.0.0.1:5432/cafe?ssl=false
+          SECRET_KEY_BASE: release-migration-check-only
+        run: |
+          set -euo pipefail
+          set +x
+          migration_env="$(mktemp)"
+          chmod 600 "$migration_env"
+
+          cleanup() {
+            rm -f "$migration_env"
+            docker logout ghcr.io >/dev/null 2>&1 || true
+          }
+          trap cleanup EXIT
+
+          {
+            printf 'DIRECT_DATABASE_URL=%s\n' "$DIRECT_DATABASE_URL"
+            printf 'DATABASE_URL=%s\n' "$DIRECT_DATABASE_URL"
+            printf 'SECRET_KEY_BASE=%s\n' "$SECRET_KEY_BASE"
+            printf 'STATIONS_CUTOVER=false\n'
+          } >"$migration_env"
+
+          image="ghcr.io/jwbaldwin/vibes:${GITHUB_SHA}"
+          postgres() {
+            docker run --rm --interactive --network host \
+              --env PGPASSWORD=postgres postgres:18.1-alpine \
+              psql --host=127.0.0.1 --username=postgres "$@"
+          }
+
+          docker pull "$image"
+          docker run --rm --network host --env-file "$migration_env" "$image" /app/bin/migrate
+          docker run --rm --network host --env-file "$migration_env" "$image" /app/bin/migrate
+          docker run --rm --network host --env-file "$migration_env" "$image" /app/bin/cafe eval Cafe.Release.seed
+          docker run --rm --network host --env-file "$migration_env" "$image" /app/bin/cafe eval Cafe.Release.seed
+          test "$(postgres --dbname=cafe -tAc 'SELECT COUNT(*) FROM schema_migrations')" -gt 0
+          test "$(postgres --dbname=cafe -tAc 'SELECT COUNT(*) FROM stations')" -gt 0
+
+  memory-benchmark:
+    name: Measure isolated candidate on Hetzner
+    if: github.event_name == 'workflow_dispatch' && inputs.memory_benchmark && github.ref != 'refs/heads/main'
+    needs: [test, build, verify-release-migration]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    environment: production
+    permissions:
+      contents: read
+      packages: read
+    concurrency:
+      group: vibes-memory-benchmark
+      cancel-in-progress: false
+    steps:
+      - uses: actions/checkout@v7
+      - uses: webfactory/ssh-agent@v0.10.0
+        with:
+          ssh-private-key: ${{ secrets.KAMAL_DEPLOY_SSH_PRIVATE_KEY }}
+      - name: Trust the existing deployment server
+        env:
+          SERVER_HOST_KEY: ${{ secrets.KAMAL_SERVER_HOST_KEY }}
+        run: |
+          mkdir -p ~/.ssh
+          printf '%s\n' "$SERVER_HOST_KEY" > ~/.ssh/known_hosts
+          chmod 600 ~/.ssh/known_hosts
+          printf 'Host *\n  BatchMode yes\n  StrictHostKeyChecking yes\n' > ~/.ssh/config
+      - name: Measure listeners, edits, and overlapping candidate containers
+        env:
+          CANDIDATE_IMAGE: ghcr.io/jwbaldwin/vibes:${{ github.sha }}
+          MEMORY_BENCHMARK_SERVER: ${{ secrets.KAMAL_SERVER_IP }}
+          MEMORY_BENCHMARK_OUTPUT: artifacts/memory
+          KAMAL_REGISTRY_USERNAME: ${{ github.actor }}
+          KAMAL_REGISTRY_PASSWORD: ${{ github.token }}
+        run: scripts/measure-memory.sh
+      - name: Keep measurement results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: vibes-memory-${{ github.sha }}
+          path: artifacts/memory
+          if-no-files-found: warn
+
   deploy:
     name: Deploy to Hetzner
-    if: github.event_name == 'workflow_dispatch' || (github.event_name == 'push' && github.ref == 'refs/heads/main')
-    needs: [test, build]
+    if: (github.event_name == 'push' && github.ref == 'refs/heads/main') || (github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main' && inputs.memory_benchmark != true)
+    needs: [test, build, verify-release-migration]
     runs-on: ubuntu-24.04
     environment: production
     permissions:
@@ -99,10 +226,6 @@ jobs:
         with:
           ruby-version: "3.3"
           bundler-cache: true
-      - uses: erlef/setup-beam@v1
-        with:
-          otp-version: 29.0.3
-          elixir-version: 1.20.2
       - uses: webfactory/ssh-agent@v0.10.0
         with:
           ssh-private-key: ${{ secrets.KAMAL_DEPLOY_SSH_PRIVATE_KEY }}
@@ -113,19 +236,67 @@ jobs:
           mkdir -p ~/.ssh
           printf '%s\n' "$SERVER_HOST_KEY" > ~/.ssh/known_hosts
           chmod 600 ~/.ssh/known_hosts
-          printf 'Host *\n  StrictHostKeyChecking yes\n' > ~/.ssh/config
+          printf 'Host *\n  BatchMode yes\n  StrictHostKeyChecking yes\n  UserKnownHostsFile %s\n' "$HOME/.ssh/known_hosts" > ~/.ssh/config
           chmod 600 ~/.ssh/config
       - name: Check deployment configuration
         run: bundle exec kamal config > /dev/null
-      - run: mix deps.get --only prod
+      - name: Put Vibes into maintenance for the stations cutover
+        id: stations_maintenance
+        if: inputs.stations_cutover == true
+        run: |
+          set -euo pipefail
+          bundle exec kamal app maintenance --primary --drain-timeout 30 --message "Vibes is applying a database update"
+      - name: Stop Vibes after draining existing connections
+        id: stop_vibes
+        if: inputs.stations_cutover == true
+        run: |
+          set -euo pipefail
+          # This targets the Vibes web role only. The shared kamal-proxy
+          # container remains up for every other app on the host.
+          bundle exec kamal app stop --primary
+      - name: Log in to GHCR for the release migration
+        uses: docker/login-action@v4
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ github.token }}
+      - name: Apply schema from the checked release image
+        id: release_migration
         env:
-          MIX_ENV: prod
-      - name: Apply schema through the direct Postgres connection
-        env:
-          MIX_ENV: prod
-          DATABASE_URL: ${{ secrets.DIRECT_DATABASE_URL }}
-        run: mix ecto.migrate
+          DIRECT_DATABASE_URL: ${{ secrets.DIRECT_DATABASE_URL }}
+          SECRET_KEY_BASE: ${{ secrets.SECRET_KEY_BASE }}
+          STATIONS_CUTOVER: ${{ inputs.stations_cutover }}
+        run: |
+          set -euo pipefail
+          set +x
+          migration_env="$(mktemp)"
+          chmod 600 "$migration_env"
+
+          cleanup() {
+            rm -f "$migration_env"
+            docker logout ghcr.io >/dev/null 2>&1 || true
+          }
+          trap cleanup EXIT
+
+          {
+            printf 'DIRECT_DATABASE_URL=%s\n' "$DIRECT_DATABASE_URL"
+            printf 'SECRET_KEY_BASE=%s\n' "$SECRET_KEY_BASE"
+            printf 'STATIONS_CUTOVER=%s\n' "${STATIONS_CUTOVER:-false}"
+          } >"$migration_env"
+
+          image="ghcr.io/jwbaldwin/vibes:${GITHUB_SHA}"
+          docker pull "$image"
+          docker run --rm --network host --env-file "$migration_env" "$image" /app/bin/migrate
+      - name: Restore Vibes after failed cutover preparation or migration
+        if: always() && !cancelled() && inputs.stations_cutover == true && (steps.stations_maintenance.outcome == 'failure' || steps.stop_vibes.outcome == 'failure' || steps.release_migration.outcome != 'success')
+        run: |
+          set -euo pipefail
+          # Ecto rolls the failed migration transaction back; the old release
+          # has not been migrated, so restart it before resuming its route.
+          bundle exec kamal app start --primary
+          bundle exec kamal app live --primary
       - name: Deploy the checked image
+        id: deploy_release
         env:
           BOOTSTRAP: ${{ inputs.setup }}
         run: |
@@ -134,5 +305,22 @@ jobs:
           else
             bundle exec kamal deploy --skip-push --version "$GITHUB_SHA"
           fi
+      - name: Return Vibes to live traffic
+        id: restore_live
+        if: inputs.stations_cutover == true
+        run: |
+          set -euo pipefail
+          bundle exec kamal app live --primary
       - name: Verify the public application
+        id: verify_public_application
         run: curl --fail --retry 10 --retry-delay 3 "https://$PHX_HOST/healthz"
+      - name: Keep failed stations cutovers in maintenance
+        if: always() && inputs.stations_cutover == true && steps.release_migration.outcome == 'success' && (steps.deploy_release.outcome == 'failure' || steps.restore_live.outcome == 'failure' || steps.verify_public_application.outcome == 'failure')
+        run: |
+          set +e
+          bundle exec kamal app maintenance --primary --drain-timeout 30 --message "Vibes cutover recovery is in progress"
+          cat <<'RECOVERY'
+          ::error::The stations schema migration completed, but the new release did not pass deployment or health checks.
+          Keep Vibes in maintenance. Before restoring an older release, roll the schema back with the exact release image or complete the forward fix; an old release may not understand the renamed schema.
+          RECOVERY
+          exit 1
