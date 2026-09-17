@@ -11,13 +11,9 @@ defmodule Cafe.Repo.Migrations.ConsolidateStations do
   """
 
   def up do
-    # Hold both catalog locks while checking and dropping/renaming tables so a
-    # legacy app cannot write between the safety checks and the destructive
-    # step. Existing populated playlists require an explicit maintenance
-    # cutover flag because the old application still expects both old names.
+    # Keep the legacy-data check and table changes in the same locked transaction.
     repo().query!("LOCK TABLE stations, playlists IN ACCESS EXCLUSIVE MODE")
     assert_legacy_stations_empty!()
-    assert_cutover_approved!()
 
     # The old row-per-video table is obsolete. The playlists table is renamed
     # below, preserving playlist ids, videos, lock versions, and timestamps.
@@ -59,20 +55,6 @@ defmodule Cafe.Repo.Migrations.ConsolidateStations do
 
       [[count]] ->
         raise "cannot consolidate stations: legacy stations table contains #{count} rows; archive or merge them before this migration"
-    end
-  end
-
-  defp assert_cutover_approved! do
-    case repo().query!("SELECT COUNT(*) FROM playlists").rows do
-      [[0]] ->
-        :ok
-
-      [[count]] ->
-        if System.get_env("STATIONS_CUTOVER") == "true" do
-          :ok
-        else
-          raise "cannot consolidate #{count} existing playlists without STATIONS_CUTOVER=true; run this migration during the planned maintenance cutover"
-        end
     end
   end
 end

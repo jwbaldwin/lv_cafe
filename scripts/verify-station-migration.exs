@@ -21,8 +21,6 @@ old_version = 20_260_909_040_000
 new_version = 20_260_912_040_000
 assert = fn condition, message -> if !condition, do: raise(message) end
 query = &Cafe.Repo.query!/1
-previous_cutover = System.get_env("STATIONS_CUTOVER")
-System.delete_env("STATIONS_CUTOVER")
 
 try do
   Ecto.Migrator.run(Cafe.Repo, migrations, :up, to: old_version, log: false)
@@ -45,25 +43,12 @@ try do
       "SELECT id,message,kind,video_id,playlist_name,source,status,admin_note,inserted_at,updated_at FROM feedback"
     ).rows
 
-  refused_without_cutover =
-    try do
-      Ecto.Migrator.run(Cafe.Repo, migrations, :up, to: new_version, log: false)
-      false
-    rescue
-      error in RuntimeError -> String.contains?(Exception.message(error), "STATIONS_CUTOVER=true")
-    end
-
-  assert.(refused_without_cutover, "populated catalog migrated without an explicit cutover")
+  Ecto.Migrator.run(Cafe.Repo, migrations, :up, to: new_version, log: false)
 
   assert.(
-    query.("SELECT id,name,theme,videos,lock_version,inserted_at,updated_at FROM playlists").rows ==
-      original_station,
-    "refused cutover changed curation"
+    Ecto.Migrator.run(Cafe.Repo, migrations, :up, all: true, log: false) == [],
+    "migration rerun was not a no-op"
   )
-
-  System.put_env("STATIONS_CUTOVER", "true")
-
-  Ecto.Migrator.run(Cafe.Repo, migrations, :up, to: new_version, log: false)
 
   assert.(
     query.("SELECT id,name,category,videos,lock_version,inserted_at,updated_at FROM stations").rows ==
@@ -151,10 +136,6 @@ try do
 
   IO.puts("Migration preservation, rollback, seed reruns, and legacy-data protection passed")
 after
-  if previous_cutover,
-    do: System.put_env("STATIONS_CUTOVER", previous_cutover),
-    else: System.delete_env("STATIONS_CUTOVER")
-
   GenServer.stop(repo)
   :ok = Ecto.Adapters.Postgres.storage_down(config)
 end

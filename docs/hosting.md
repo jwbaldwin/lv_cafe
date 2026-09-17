@@ -45,9 +45,7 @@ For a fresh disposable database or a new installation, load the catalog only aft
 
 The migration step uses `set -euo pipefail`, so a failed migration prevents `kamal setup` or `kamal deploy` from running. Kamal then deploys the same `${GITHUB_SHA}` with `--skip-push --version`, preserving its normal deploy lock, proxy health check, and old-container drain behavior. Workflow runs for the same commit are serialized so a concurrent rebuild cannot replace its image tag during verification or deployment. A measurement-only dispatch also cannot deploy. A workflow dispatch from a non-main ref builds its candidate image but cannot run the production deploy job; production dispatches must target `main`.
 
-The migration runs while the currently running web container may still serve requests. Migrations therefore follow an expand/contract contract: add new tables or columns first, keep the old `playlists` shape readable and writable (or dual-write it) until the replacement is healthy, and remove old names only in a later release. The stations consolidation is the deliberate exception: a populated legacy catalog refuses to migrate unless the workflow dispatch sets `stations_cutover=true`.
-
-Run that one-time cutover from `main` with `stations_cutover=true`. The workflow asks Kamal to put only Vibes into maintenance, waits up to the configured 30-second drain timeout, and then stops only the Vibes web container. This closes existing application connections, including admin WebSockets, before the destructive rename; the shared kamal-proxy container and other apps remain up. If the migration fails, Ecto rolls back its transaction and the workflow starts the old container and resumes its Vibes route. If deployment or health checks fail after the schema change, Vibes stays unavailable and the workflow prints recovery instructions; roll the schema back with the exact release image or fix forward before restoring an older release that expects `playlists`.
+Merging to `main` runs migrations and deploys automatically after checks pass. The station migration renames the existing catalog while preserving its videos, edit versions, timestamps, and feedback. No manual deployment input is required. The running old release may briefly fail requests during the rename until Kamal replaces it; this app accepts that short interruption.
 
 `/healthz` checks a real database query without creating a browser session. It is public and outside the browser pipeline so deployment probes avoid session/CSRF work. Kamal keeps the old container until the replacement passes its health check. Shutdown and proxy draining use 30-second timeouts.
 
@@ -74,7 +72,6 @@ No data export/import was needed. Existing migrations built the schema; a fresh 
 - Share Kamal proxy by domain, using one Vibes hostname and no Annie-specific integrations
 - Build on GitHub Actions, cache Docker layers in GHCR, and serialize production deployments
 - Run the exact release image's schema changes over a direct Postgres connection before deployment; normal traffic uses PgBouncer
-- Require `stations_cutover=true` for the one-time destructive catalog rename, drain and stop only Vibes before it runs, and keep the shared proxy available
 
 ## Credential records
 

@@ -14,10 +14,6 @@ on:
         description: Measure the candidate on Hetzner with isolated containers (non-main only)
         type: boolean
         default: false
-      stations_cutover:
-        description: Put only Vibes into maintenance for the destructive stations schema cutover
-        type: boolean
-        default: false
 
 # Serialize reruns of the same commit so its image tag cannot change between
 # build, verification, and deployment within this workflow.
@@ -61,8 +57,6 @@ jobs:
       - run: mix test
       - run: node --test test/js/*.test.mjs
       - run: MIX_ENV=test mix run --no-start scripts/verify-station-migration.exs
-        env:
-          STATIONS_CUTOVER: "true"
       - run: MIX_ENV=prod mix assets.deploy
 
   build:
@@ -140,7 +134,6 @@ jobs:
             printf 'DIRECT_DATABASE_URL=%s\n' "$DIRECT_DATABASE_URL"
             printf 'DATABASE_URL=%s\n' "$DIRECT_DATABASE_URL"
             printf 'SECRET_KEY_BASE=%s\n' "$SECRET_KEY_BASE"
-            printf 'STATIONS_CUTOVER=false\n'
           } >"$migration_env"
 
           image="ghcr.io/jwbaldwin/vibes:${GITHUB_SHA}"
@@ -240,20 +233,6 @@ jobs:
           chmod 600 ~/.ssh/config
       - name: Check deployment configuration
         run: bundle exec kamal config > /dev/null
-      - name: Put Vibes into maintenance for the stations cutover
-        id: stations_maintenance
-        if: inputs.stations_cutover == true
-        run: |
-          set -euo pipefail
-          bundle exec kamal app maintenance --primary --drain-timeout 30 --message "Vibes is applying a database update"
-      - name: Stop Vibes after draining existing connections
-        id: stop_vibes
-        if: inputs.stations_cutover == true
-        run: |
-          set -euo pipefail
-          # This targets the Vibes web role only. The shared kamal-proxy
-          # container remains up for every other app on the host.
-          bundle exec kamal app stop --primary
       - name: Log in to GHCR for the release migration
         uses: docker/login-action@v4
         with:
@@ -261,11 +240,9 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ github.token }}
       - name: Apply schema from the checked release image
-        id: release_migration
         env:
           DIRECT_DATABASE_URL: ${{ secrets.DIRECT_DATABASE_URL }}
           SECRET_KEY_BASE: ${{ secrets.SECRET_KEY_BASE }}
-          STATIONS_CUTOVER: ${{ inputs.stations_cutover }}
         run: |
           set -euo pipefail
           set +x
@@ -281,22 +258,12 @@ jobs:
           {
             printf 'DIRECT_DATABASE_URL=%s\n' "$DIRECT_DATABASE_URL"
             printf 'SECRET_KEY_BASE=%s\n' "$SECRET_KEY_BASE"
-            printf 'STATIONS_CUTOVER=%s\n' "${STATIONS_CUTOVER:-false}"
           } >"$migration_env"
 
           image="ghcr.io/jwbaldwin/vibes:${GITHUB_SHA}"
           docker pull "$image"
           docker run --rm --network host --env-file "$migration_env" "$image" /app/bin/migrate
-      - name: Restore Vibes after failed cutover preparation or migration
-        if: always() && !cancelled() && inputs.stations_cutover == true && (steps.stations_maintenance.outcome == 'failure' || steps.stop_vibes.outcome == 'failure' || steps.release_migration.outcome != 'success')
-        run: |
-          set -euo pipefail
-          # Ecto rolls the failed migration transaction back; the old release
-          # has not been migrated, so restart it before resuming its route.
-          bundle exec kamal app start --primary
-          bundle exec kamal app live --primary
       - name: Deploy the checked image
-        id: deploy_release
         env:
           BOOTSTRAP: ${{ inputs.setup }}
         run: |
@@ -305,22 +272,5 @@ jobs:
           else
             bundle exec kamal deploy --skip-push --version "$GITHUB_SHA"
           fi
-      - name: Return Vibes to live traffic
-        id: restore_live
-        if: inputs.stations_cutover == true
-        run: |
-          set -euo pipefail
-          bundle exec kamal app live --primary
       - name: Verify the public application
-        id: verify_public_application
         run: curl --fail --retry 10 --retry-delay 3 "https://$PHX_HOST/healthz"
-      - name: Keep failed stations cutovers in maintenance
-        if: always() && inputs.stations_cutover == true && steps.release_migration.outcome == 'success' && (steps.deploy_release.outcome == 'failure' || steps.restore_live.outcome == 'failure' || steps.verify_public_application.outcome == 'failure')
-        run: |
-          set +e
-          bundle exec kamal app maintenance --primary --drain-timeout 30 --message "Vibes cutover recovery is in progress"
-          cat <<'RECOVERY'
-          ::error::The stations schema migration completed, but the new release did not pass deployment or health checks.
-          Keep Vibes in maintenance. Before restoring an older release, roll the schema back with the exact release image or complete the forward fix; an old release may not understand the renamed schema.
-          RECOVERY
-          exit 1
