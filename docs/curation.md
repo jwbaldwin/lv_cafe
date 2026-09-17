@@ -29,7 +29,7 @@ Station changes use optimistic locking, so an older browser cannot overwrite new
 
 Set `ADMIN_PASSWORD` in the Phoenix process environment. It must be at least 16 bytes, and should be a unique password stored in your password manager. There is no default password or development bypass. Missing/short configuration leaves sign-in unavailable and admin routes inaccessible. Do not commit a password.
 
-For production, keep the credential in GitHub’s production environment and the Vibes Production 1Password item. `config/runtime.exs` reads it on boot. GitHub Actions deploys the built release with Kamal on Hetzner; see [hosting](hosting.md) for release migrations and cutover steps.
+For production, keep the credential in GitHub’s production environment and the Vibes Production 1Password item. `config/runtime.exs` reads it on boot. GitHub Actions deploys the built release with Kamal on Hetzner; see [hosting](hosting.md) for automatic deployment and release migrations.
 
 Sign-in creates a signed, twelve-hour session tied to the configured credential using a server-keyed digest. Changing the password invalidates old sessions, including future actions in connected admin LiveViews. Authentication is checked for HTTP access, LiveView mounting, navigation, and every admin event. Production cookies are Secure and SameSite=Lax; form posts use Phoenix CSRF protection. Sign-out clears this browser's session. Login attempts have a per-instance IP limit. This is a single-admin password flow, not a multi-user account system.
 

@@ -25,5 +25,3 @@ Pushes to `main` deploy to Hetzner through Kamal after formatting, compilation, 
 See [hosting and operations](docs/hosting.md) and the [guide for deploying another app](docs/deploy-another-app.md).
 
 Station editing, playback refresh, and safe seed reruns are described in the [curation guide](docs/curation.md). See [theme image measurements](docs/theme-images.md) and [memory measurement instructions](docs/memory-measurement.md) for the deployment size and capacity checks.
-
-The first stations release requires the one-time maintenance cutover described in the hosting guide. Merging alone does not authorize renaming a populated catalog: the migration refuses until that cutover is explicitly selected.
