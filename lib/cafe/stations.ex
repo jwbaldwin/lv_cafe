@@ -11,39 +11,24 @@ defmodule Cafe.Stations do
   alias Cafe.Repo
   alias Cafe.Stations.{Playback, Station, Video}
 
-  # Mute, toggle themes, pause/play, and navigation controls are reserved for the UI.
-  @global_keys [
-    "p",
-    "f",
-    "m",
-    "t",
-    "h",
-    "j",
-    "k",
-    "l",
-    " ",
-    "ArrowLeft",
-    "ArrowRight",
-    "ArrowUp",
-    "ArrowDown"
-  ]
-  @seasons [:spring, :summer, :autumn, :winter]
-  @vibes [:blade_runner, :christmas, :cozy, :locked_in, :morning_coffee, :rainy_day]
-
-  @doc "Loads the complete catalog in stable category/name order."
+  @doc "Loads the complete catalog in display order."
   def list_stations do
-    Repo.all(from s in Station, order_by: [asc: s.category, asc: s.name])
+    Repo.all(from s in Station, order_by: [asc: s.position, asc: s.id])
   end
 
-  @doc "Loads one station by its unique name."
-  def get_station(name) when is_atom(name), do: get_station(Atom.to_string(name))
-  def get_station(name) when is_binary(name), do: Repo.get_by(Station, name: name)
-  def get_station(_name), do: nil
+  @doc "Loads a station by its permanent ID"
+  def get_station!(id), do: Repo.get!(Station, id)
 
-  @doc "Loads one station by its unique name or raises when it is missing."
-  def get_station!(name) when is_atom(name), do: get_station!(Atom.to_string(name))
-  def get_station!(name) when is_binary(name), do: Repo.get_by!(Station, name: name)
-  def get_station!(_name), do: raise(Ecto.NoResultsError, queryable: Station)
+  def change_station(station, attrs \\ %{}), do: Station.changeset(station, attrs)
+
+  def create_station(attrs) do
+    case Repo.insert(Station.changeset(%Station{}, attrs)) do
+      {:ok, station} -> broadcast(station)
+      error -> error
+    end
+  end
+
+  def update_station(%Station{} = station, attrs), do: save_station(station, attrs)
 
   @doc "Updates one embedded video's settings using the supplied station snapshot."
   def update_video(%Station{} = station, id, attrs) when is_binary(id) and is_map(attrs) do
@@ -215,42 +200,6 @@ defmodule Cafe.Stations do
   def select_video(%Station{}, _position), do: {:error, :video_not_found}
   def select_video(_station, _position), do: {:error, :station_not_found}
 
-  @doc "Returns the static season names used by the theme picker."
-  def get_seasons, do: @seasons
-
-  @doc "Returns the static vibe names used by the theme picker."
-  def get_vibes, do: @vibes
-
-  @doc "Returns all static theme names in picker order."
-  def all_stations, do: get_seasons() ++ get_vibes()
-
-  @doc """
-  Takes all the theme names and returns a map of unique keys for each theme
-  with the found key bracketed in the name.
-
-  For example, `spring` may become `[s]pring` while a later collision can
-  produce `mo[r]ning_coffee`.
-  """
-  def get_stations(theme_names) do
-    theme_names
-    |> Enum.with_index()
-    |> Enum.reduce(%{keys: MapSet.new(@global_keys), mapping: %{}}, fn {name, index},
-                                                                       %{
-                                                                         keys: set,
-                                                                         mapping: mapping
-                                                                       } ->
-      string_name = to_string(name)
-      char = get_unique_character(set, string_name, 0, index)
-      styled_name = get_styled_name(string_name, char)
-
-      %{
-        keys: MapSet.put(set, char),
-        mapping: Map.put(mapping, name, %{char: char, name: styled_name})
-      }
-    end)
-    |> then(& &1.mapping)
-  end
-
   defp save_station(%Station{} = station, attrs) do
     attrs =
       if Map.has_key?(attrs, :videos),
@@ -272,20 +221,4 @@ defmodule Cafe.Stations do
     Phoenix.PubSub.broadcast(Cafe.PubSub, "stations", {:station_updated, station})
     {:ok, station}
   end
-
-  defp get_styled_name(name, char) when is_integer(char), do: "[#{char}] " <> name
-  defp get_styled_name(name, char), do: String.replace(name, char, "[#{char}]", global: false)
-
-  defp get_unique_character(set, name, position, index_fallback)
-       when position < byte_size(name) do
-    test_char = String.at(name, position)
-
-    if MapSet.member?(set, test_char) do
-      get_unique_character(set, name, position + 1, index_fallback)
-    else
-      test_char
-    end
-  end
-
-  defp get_unique_character(_set, _name, _position, index_fallback), do: index_fallback
 end

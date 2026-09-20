@@ -6,7 +6,7 @@ alias Cafe.Stations.Station
 {stations, _binding} = Code.eval_file(Path.join(__DIR__, "station_seed_data.exs"))
 
 Enum.each(stations, fn attrs ->
-  %Station{}
+  %Station{seed_key: attrs["seed_key"]}
   |> Station.changeset(attrs)
-  |> Repo.insert!(on_conflict: :nothing, conflict_target: :name)
+  |> Repo.insert!(on_conflict: :nothing)
 end)

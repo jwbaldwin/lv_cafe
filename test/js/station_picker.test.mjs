@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
-const source = await readFile(new URL('../../assets/js/hooks/theme_picker.js', import.meta.url), 'utf8');
+const source = await readFile(new URL('../../assets/js/hooks/station_picker.js', import.meta.url), 'utf8');
 const { default: hook, nextGridIndex } = await import('data:text/javascript;base64,' + Buffer.from(source).toString('base64'));
 
 test('hjkl follows the responsive grid and does not wrap row edges', () => {
@@ -39,7 +39,12 @@ function setup() {
     removeEventListener: event => listeners.delete(event),
   };
   globalThis.getComputedStyle = () => ({ display: open ? 'block' : 'none' });
-  const instance = {...hook, el: {querySelector: selector => selector === '[data-theme-picker]' ? picker : toggle}};
+  globalThis.CSS = {escape: value => value};
+  const instance = {...hook, el: {querySelector: selector => {
+    if (selector === '[data-station-picker]') return picker;
+    if (selector === '[data-station-picker-toggle]') return toggle;
+    return tiles.find(tile => selector === `[data-station-key="${tile.shortcut}"]`);
+  }}};
   instance.mounted();
   const key = (key, extra = {}) => {
     const event = {key, target:{closest:()=>null}, preventDefault(){this.prevented=true;}, stopImmediatePropagation(){this.stopped=true;}, ...extra};
@@ -71,5 +76,20 @@ test('closed picker and editable fields keep their normal keyboard behavior', ()
   assert.equal(t.key(' ', {target:{closest:()=>({})}}).prevented, undefined);
   assert.equal(t.key('h', {metaKey:true}).prevented, undefined);
   t.toggle.click();assert.equal(t.key(' ').prevented, undefined);
+  t.instance.destroyed();
+});
+
+
+test('shortcuts follow the current rendered station settings after an edit', () => {
+  const t = setup();
+  const event = key => ({key, target: {closest: () => null}});
+  t.tiles[0].shortcut = 'n';
+  t.instance.onKeyUp(event('n'));
+  assert.equal(t.clicks(), 1);
+  t.tiles[0].shortcut = 'x';
+  t.instance.onKeyUp(event('n'));
+  assert.equal(t.clicks(), 1);
+  t.instance.onKeyUp(event('x'));
+  assert.equal(t.clicks(), 2);
   t.instance.destroyed();
 });

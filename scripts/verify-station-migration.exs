@@ -43,7 +43,7 @@ try do
       "SELECT id,message,kind,video_id,playlist_name,source,status,admin_note,inserted_at,updated_at FROM feedback"
     ).rows
 
-  Ecto.Migrator.run(Cafe.Repo, migrations, :up, to: new_version, log: false)
+  Ecto.Migrator.run(Cafe.Repo, migrations, :up, all: true, log: false)
 
   assert.(
     Ecto.Migrator.run(Cafe.Repo, migrations, :up, all: true, log: false) == [],
@@ -66,6 +66,14 @@ try do
   assert.(
     query.("SELECT to_regclass('public.playlists') IS NULL").rows == [[true]],
     "obsolete table remains"
+  )
+
+  assert.(
+    query.(
+      "SELECT shortcut, position, image_url, effect, seed_key FROM stations WHERE name='cozy'"
+    ).rows ==
+      [["o", 6, "/images/themes/vibes/cozy/thumbs/1.webp", "none", "cozy"]],
+    "station settings were not backfilled"
   )
 
   Code.eval_file("priv/repo/seeds.exs")
@@ -91,7 +99,7 @@ try do
     "seeds overwrote curated station"
   )
 
-  Ecto.Migrator.run(Cafe.Repo, migrations, :down, step: 1, log: false)
+  Ecto.Migrator.run(Cafe.Repo, migrations, :down, step: 2, log: false)
 
   assert.(
     query.(

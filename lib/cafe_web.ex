@@ -54,8 +54,6 @@ defmodule CafeWeb do
       use Phoenix.LiveView,
         layout: {CafeWeb.Layouts, :app}
 
-      import CafeWeb.PrefsHelper
-
       unquote(html_helpers())
     end
   end
@@ -63,7 +61,6 @@ defmodule CafeWeb do
   def live_component do
     quote do
       use Phoenix.LiveComponent
-      import CafeWeb.PrefsHelper
 
       unquote(html_helpers())
     end

@@ -1,5 +1,6 @@
 defmodule CafeWeb.CurationTest do
   use CafeWeb.ConnCase
+  import Cafe.StationsFixtures
   import Phoenix.LiveViewTest
   alias Cafe.{Curation, Repo, Stations}
   alias Cafe.Curation.Feedback
@@ -46,18 +47,18 @@ defmodule CafeWeb.CurationTest do
   end
 
   test "rotated credentials revoke already connected admin actions", %{conn: conn} do
-    {:ok, view, _} = live(admin_conn(conn), "/admin")
-    before = Stations.get_station!("cozy")
+    {:ok, view, _} = live(admin_conn(conn), "/admin?station=#{station_named("cozy").id}")
+    before = station_named("cozy")
     Application.put_env(:cafe, :admin_password, "different-admin-password")
     render_hook(view, "remove", %{"id" => hd(before.videos).video_id})
     assert_redirect(view, "/admin/login")
-    assert Stations.get_station!("cozy").videos == before.videos
+    assert station_named("cozy").videos == before.videos
   end
 
   test "visitor theme suggestion persists and is visible only in the admin inbox", %{conn: conn} do
     {:ok, view, _} =
       live(
-        put_connect_params(conn, %{"preferences" => %{"theme" => "vibes", "sub_theme" => "cozy"}}),
+        put_connect_params(conn, %{"station_id" => to_string(station_named("cozy").id)}),
         "/?feedback=open"
       )
 
@@ -118,7 +119,7 @@ defmodule CafeWeb.CurationTest do
     {:ok, _, public} =
       live(
         put_connect_params(build_conn(), %{
-          "preferences" => %{"theme" => "vibes", "sub_theme" => "cozy"}
+          "station_id" => to_string(station_named("cozy").id)
         }),
         "/"
       )
@@ -127,7 +128,7 @@ defmodule CafeWeb.CurationTest do
   end
 
   test "admin sections keep the selected station and clear preview state", %{conn: conn} do
-    {:ok, view, _} = live(admin_conn(conn), "/admin?station=cozy")
+    {:ok, view, _} = live(admin_conn(conn), "/admin?station=#{station_named("cozy").id}")
     assert has_element?(view, "section[aria-label='Feedback inbox'][hidden]")
     render_hook(view, "preview", %{"id" => "cEn4c9JDy8A"})
     assert_push_event(view, "preview_video", %{video_id: "cEn4c9JDy8A"})
@@ -141,12 +142,12 @@ defmodule CafeWeb.CurationTest do
 
     assert has_element?(view, "button[phx-click='save_verification']")
     view |> element("nav[aria-label='Admin sections'] a", "Inbox") |> render_click()
-    assert_patch(view, "/admin?view=inbox&station=cozy&status=open")
+    assert_patch(view, "/admin?view=inbox&station=#{station_named("cozy").id}&status=open")
     assert has_element?(view, "section[aria-label='Stations'][hidden]")
     refute has_element?(view, "section[aria-label='Feedback inbox'][hidden]")
     refute has_element?(view, "button[phx-click='save_verification']")
     view |> form("#inbox-filter", status: "included") |> render_change()
-    assert_patch(view, "/admin?view=inbox&station=cozy&status=included")
+    assert_patch(view, "/admin?view=inbox&station=#{station_named("cozy").id}&status=included")
   end
 
   test "legacy feedback URL opens the player widget", %{conn: conn} do
@@ -155,7 +156,7 @@ defmodule CafeWeb.CurationTest do
 
   test "widget enforces its limit and uses current server context", %{conn: conn} do
     conn =
-      put_connect_params(conn, %{"preferences" => %{"theme" => "vibes", "sub_theme" => "cozy"}})
+      put_connect_params(conn, %{"station_id" => to_string(station_named("cozy").id)})
 
     {:ok, view, _} = live(conn, "/?feedback=open")
 
@@ -186,31 +187,34 @@ defmodule CafeWeb.CurationTest do
   end
 
   test "admin can add a video and leave feedback from the same app", %{conn: conn} do
-    {:ok, view, _} = live(admin_conn(conn), "/admin")
+    {:ok, view, _} = live(admin_conn(conn), "/admin?station=#{station_named("cozy").id}")
     view |> form("#add-video", url: "https://youtu.be/vIlzvUsB6H0") |> render_submit()
-    assert List.last(Stations.get_station!("cozy").videos).video_id == "vIlzvUsB6H0"
+    assert List.last(station_named("cozy").videos).video_id == "vIlzvUsB6H0"
     view |> form("#note-vIlzvUsB6H0", message: "Good scene, find more like it") |> render_submit()
     assert [%Feedback{source: "admin", video_id: "vIlzvUsB6H0"}] = Curation.list_feedback()
   end
 
   test "a removed current video is replaced for an already connected listener", %{conn: conn} do
     conn =
-      put_connect_params(conn, %{"preferences" => %{"theme" => "vibes", "sub_theme" => "cozy"}})
+      put_connect_params(conn, %{"station_id" => to_string(station_named("cozy").id)})
 
     {:ok, listener, _} = live(conn, "/")
-    station = Stations.get_station!("cozy")
+    station = station_named("cozy")
     assert {:ok, updated} = Stations.remove_video(station, hd(station.videos).video_id)
     next = hd(updated.videos).video_id
     assert_push_event(listener, "changeVideo", %{video_id: ^next})
   end
 
   test "stale station edits reload the latest version without overwriting it", %{conn: conn} do
-    {:ok, first, _} = live(admin_conn(conn), "/admin?station=cozy")
-    {:ok, second, _} = live(admin_conn(build_conn()), "/admin?station=cozy")
+    {:ok, first, _} = live(admin_conn(conn), "/admin?station=#{station_named("cozy").id}")
+
+    {:ok, second, _} =
+      live(admin_conn(build_conn()), "/admin?station=#{station_named("cozy").id}")
+
     first |> form("#add-video", url: "https://youtu.be/vIlzvUsB6H0") |> render_submit()
     second |> form("#add-video", url: "https://youtu.be/abcdefghijk") |> render_submit()
     assert render(second) =~ "This station changed in another browser"
-    station = Stations.get_station!("cozy")
+    station = station_named("cozy")
     assert Enum.any?(station.videos, &(&1.video_id == "vIlzvUsB6H0"))
     refute Enum.any?(station.videos, &(&1.video_id == "abcdefghijk"))
   end

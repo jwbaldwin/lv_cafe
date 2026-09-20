@@ -1,4 +1,5 @@
 defmodule Cafe.StationsTest do
+  import Cafe.StationsFixtures
   use Cafe.DataCase
 
   alias Cafe.Stations
@@ -9,12 +10,12 @@ defmodule Cafe.StationsTest do
     :ok
   end
 
-  test "loads stations in category and name order" do
-    names = Enum.map(Stations.list_stations(), &{&1.category, &1.name})
+  test "loads stations in display order" do
+    names = Enum.map(Stations.list_stations(), &{&1.position, &1.id})
     assert names == Enum.sort(names)
     assert length(names) == 10
-    assert Stations.get_station!(:spring).category == "seasons"
-    assert Stations.get_station("missing") == nil
+    assert station_named(:spring).category == "seasons"
+    assert Stations.get_station!(station_named("spring").id).name == "spring"
   end
 
   test "select_video is pure, wraps arbitrary positions, and computes playback" do
@@ -48,39 +49,78 @@ defmodule Cafe.StationsTest do
     assert Stations.playback_start(%Video{start_seconds: 12}, 59) == 12
   end
 
-  test "static theme helpers keep reserved keyboard shortcuts unique" do
-    assert Stations.get_seasons() == [:spring, :summer, :autumn, :winter]
+  test "creates stations, rejects conflicting shortcuts, and broadcasts settings edits" do
+    Phoenix.PubSub.subscribe(Cafe.PubSub, "stations")
+    assert {:ok, station} = Stations.create_station(station_attrs())
+    assert_receive {:station_updated, ^station}
+    assert {:error, changeset} = Stations.create_station(station_attrs(%{"name" => "Another"}))
+    assert "has already been taken" in errors_on(changeset).shortcut
 
-    assert Stations.get_vibes() == [
-             :blade_runner,
-             :christmas,
-             :cozy,
-             :locked_in,
-             :morning_coffee,
-             :rainy_day
-           ]
+    for key <- ~w(p f m t h j k l ? ab) do
+      assert {:error, changeset} = Stations.create_station(station_attrs(%{"shortcut" => key}))
+      assert errors_on(changeset).shortcut
+    end
 
-    shortcuts = Stations.get_stations(Stations.all_stations())
-    assert map_size(shortcuts) == 10
-    assert shortcuts.locked_in == %{char: "e", name: "lock[e]d_in"}
-    assert shortcuts.morning_coffee == %{char: "r", name: "mo[r]ning_coffee"}
-    assert shortcuts |> Map.values() |> Enum.map(& &1.char) |> Enum.uniq() |> length() == 10
+    assert {:ok, edited} =
+             Stations.update_station(station, %{
+               "name" => "Renamed",
+               "shortcut" => "X",
+               "effect" => "winter"
+             })
+
+    assert edited.id == station.id
+    assert edited.shortcut == "x"
+    assert_receive {:station_updated, ^edited}
+    assert {:error, :stale} = Stations.update_station(station, %{"name" => "Stale"})
+  end
+
+  test "validates settings and requires a playable first video" do
+    for attrs <- [
+          %{"videos" => []},
+          %{"image_url" => "javascript:alert(1)"},
+          %{"image_url" => "//example.com/x"},
+          %{"position" => -1},
+          %{"effect" => "unknown"},
+          %{"name" => " "}
+        ] do
+      assert {:error, _} = Stations.create_station(station_attrs(attrs))
+    end
+
+    assert {:ok, _} = Stations.create_station(station_attrs(%{"image_url" => ""}))
+  end
+
+  test "seed reruns preserve renamed stations and all their settings" do
+    original = station_named("cozy")
+
+    assert {:ok, updated} =
+             Stations.update_station(original, %{
+               "name" => "My cafe",
+               "category" => "Work",
+               "shortcut" => "z",
+               "position" => 99,
+               "image_url" => "https://example.com/new.webp",
+               "effect" => "spring"
+             })
+
+    Code.eval_file("priv/repo/seeds.exs")
+    assert Stations.get_station!(original.id) == updated
+    assert length(Stations.list_stations()) == 10
   end
 
   test "edits preserve optimistic locking and broadcast the saved snapshot" do
     Phoenix.PubSub.subscribe(Cafe.PubSub, "stations")
-    original = Stations.get_station!(:cozy)
+    original = station_named(:cozy)
     id = hd(original.videos).video_id
 
     assert {:ok, saved} = Stations.update_video(original, id, %{"title" => "Coffee and hoodie"})
     assert saved.lock_version == original.lock_version + 1
-    assert hd(Stations.get_station!(:cozy).videos).title == "Coffee and hoodie"
+    assert hd(station_named(:cozy).videos).title == "Coffee and hoodie"
     assert_receive {:station_updated, ^saved}
     assert {:error, :stale} = Stations.remove_video(original, id)
   end
 
   test "adds, moves, removes, and rejects invalid or duplicate videos" do
-    station = Stations.get_station!(:cozy)
+    station = station_named(:cozy)
     assert {:ok, station} = Stations.add_video(station, "https://youtu.be/vIlzvUsB6H0")
     assert List.last(station.videos).video_id == "vIlzvUsB6H0"
     assert {:error, _} = Stations.add_video(station, "vIlzvUsB6H0")
@@ -98,11 +138,11 @@ defmodule Cafe.StationsTest do
   end
 
   test "rerunning seeds preserves station edits" do
-    station = Stations.get_station!(:cozy)
+    station = station_named(:cozy)
     id = hd(station.videos).video_id
     assert {:ok, _} = Stations.update_video(station, id, %{"title" => "custom title"})
 
     Code.eval_file("priv/repo/seeds.exs")
-    assert hd(Stations.get_station!(:cozy).videos).title == "custom title"
+    assert hd(station_named(:cozy).videos).title == "custom title"
   end
 end

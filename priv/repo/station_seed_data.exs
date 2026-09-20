@@ -3,6 +3,11 @@
 [
   %{
     "name" => "spring",
+    "seed_key" => "spring",
+    "shortcut" => "s",
+    "position" => 0,
+    "image_url" => "/images/themes/seasons/spring/thumbs/1.webp",
+    "effect" => "spring",
     "category" => "seasons",
     "videos" => [
       %{
@@ -24,6 +29,11 @@
   },
   %{
     "name" => "summer",
+    "seed_key" => "summer",
+    "shortcut" => "u",
+    "position" => 1,
+    "image_url" => "/images/themes/seasons/summer/thumbs/1.webp",
+    "effect" => "summer",
     "category" => "seasons",
     "videos" => [
       %{
@@ -49,6 +59,11 @@
   },
   %{
     "name" => "autumn",
+    "seed_key" => "autumn",
+    "shortcut" => "a",
+    "position" => 2,
+    "image_url" => "/images/themes/seasons/autumn/thumbs/1.webp",
+    "effect" => "autumn",
     "category" => "seasons",
     "videos" => [
       %{
@@ -70,6 +85,11 @@
   },
   %{
     "name" => "winter",
+    "seed_key" => "winter",
+    "shortcut" => "w",
+    "position" => 3,
+    "image_url" => "/images/themes/seasons/winter/thumbs/1.webp",
+    "effect" => "winter",
     "category" => "seasons",
     "videos" => [
       %{
@@ -89,7 +109,12 @@
     ]
   },
   %{
-    "name" => "blade_runner",
+    "name" => "blade runner",
+    "seed_key" => "blade_runner",
+    "shortcut" => "b",
+    "position" => 4,
+    "image_url" => "/images/themes/vibes/blade_runner/thumbs/1.webp",
+    "effect" => "none",
     "category" => "vibes",
     "videos" => [
       %{
@@ -117,6 +142,11 @@
   },
   %{
     "name" => "christmas",
+    "seed_key" => "christmas",
+    "shortcut" => "c",
+    "position" => 5,
+    "image_url" => "/images/themes/vibes/christmas/thumbs/1.webp",
+    "effect" => "none",
     "category" => "vibes",
     "videos" => [
       %{
@@ -164,6 +194,11 @@
   },
   %{
     "name" => "cozy",
+    "seed_key" => "cozy",
+    "shortcut" => "o",
+    "position" => 6,
+    "image_url" => "/images/themes/vibes/cozy/thumbs/1.webp",
+    "effect" => "none",
     "category" => "vibes",
     "videos" => [
       %{
@@ -194,7 +229,12 @@
     ]
   },
   %{
-    "name" => "locked_in",
+    "name" => "locked in",
+    "seed_key" => "locked_in",
+    "shortcut" => "e",
+    "position" => 7,
+    "image_url" => "/images/themes/vibes/locked_in/thumbs/1.webp",
+    "effect" => "none",
     "category" => "vibes",
     "videos" => [
       %{
@@ -216,7 +256,12 @@
     ]
   },
   %{
-    "name" => "rainy_day",
+    "name" => "rainy day",
+    "seed_key" => "rainy_day",
+    "shortcut" => "i",
+    "position" => 9,
+    "image_url" => "/images/themes/vibes/rainy_day/thumbs/1.webp",
+    "effect" => "none",
     "category" => "vibes",
     "videos" => [
       %{
@@ -237,7 +282,12 @@
     ]
   },
   %{
-    "name" => "morning_coffee",
+    "name" => "morning coffee",
+    "seed_key" => "morning_coffee",
+    "shortcut" => "r",
+    "position" => 8,
+    "image_url" => "/images/themes/vibes/morning_coffee/thumbs/1.webp",
+    "effect" => "none",
     "category" => "vibes",
     "videos" => [
       %{

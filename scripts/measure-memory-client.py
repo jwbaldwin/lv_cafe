@@ -33,7 +33,7 @@ from datetime import datetime, timezone
 from typing import Any, Dict, Iterable, List, Optional, Sequence, Tuple
 
 
-DEFAULT_PREFERENCES = {"theme": "vibes", "sub_theme": "cozy"}
+STATION_IDS = os.environ.get("BENCHMARK_STATION_IDS", "").split()
 DEFAULT_TIMEOUT_SECONDS = 10.0
 MAX_FAILURE_TEXT = 240
 
@@ -143,7 +143,7 @@ def component_ids(source: str) -> Dict[str, int]:
         element_id = parse_attribute(tag, "id")
         if cid is None or element_id is None:
             continue
-        if element_id in ("controls", "themes"):
+        if element_id in ("controls", "stations"):
             try:
                 found[element_id] = int(cid)
             except ValueError:
@@ -525,8 +525,8 @@ def component_ids_from_rendered(rendered: Any) -> Dict[str, int]:
         except (TypeError, ValueError):
             continue
         text = "\n".join(rendered_strings(component))
-        if 'id="themes"' in text:
-            found["themes"] = cid
+        if 'id="stations"' in text:
+            found["stations"] = cid
         elif 'phx-click="next_video"' in text:
             found["controls"] = cid
     return found
@@ -617,7 +617,7 @@ class Listener:
                         "url": f"https://{self.host_header}/",
                         "params": {
                             "_csrf_token": csrf,
-                            "preferences": DEFAULT_PREFERENCES,
+                            "station_id": STATION_IDS[0],
                             "_mounts": 0,
                             "_mount_attempts": 0,
                         },
@@ -632,7 +632,7 @@ class Listener:
             response = reply.get("response")
             if isinstance(response, dict):
                 cids.update(component_ids_from_rendered(response.get("rendered")))
-            missing = [name for name in ("controls", "themes") if name not in cids]
+            missing = [name for name in ("controls", "stations") if name not in cids]
             if missing:
                 raise RuntimeError(f"missing LiveView component CIDs: {','.join(missing)}")
             self.metrics.timing("listener_join", (time.monotonic() - join_started) * 1000)
@@ -660,15 +660,9 @@ class Listener:
                         cid = cids["controls"]
                         value = {}
                     else:
-                        event_name = "select_theme"
-                        cid = cids["themes"]
-                        choices = [
-                            {"theme": "vibes", "sub_theme": "cozy"},
-                            {"theme": "seasons", "sub_theme": "winter"},
-                            {"theme": "vibes", "sub_theme": "rainy_day"},
-                            {"theme": "seasons", "sub_theme": "spring"},
-                        ]
-                        value = choices[rng.randrange(len(choices))]
+                        event_name = "select_station"
+                        cid = cids["stations"]
+                        value = {"id": rng.choice(STATION_IDS)}
                     self.send_event(event_name, value, cid, event_name)
                     self.action_count += 1
                     next_action = now + self.action_interval
@@ -812,7 +806,7 @@ def admin_remove_current(
             raise RuntimeError(f"admin login returned HTTP {login_response.status}")
 
         admin_page = http_client.request(
-            "GET", "/admin?station=cozy", operation="admin_http_get"
+            "GET", f"/admin?station={STATION_IDS[0]}", operation="admin_http_get"
         )
         if admin_page.status != 200:
             raise RuntimeError(f"admin page returned HTTP {admin_page.status}")
@@ -837,7 +831,7 @@ def admin_remove_current(
                 topic,
                 "phx_join",
                 {
-                    "url": f"https://{host_header}/admin?station=cozy",
+                    "url": f"https://{host_header}/admin?station={STATION_IDS[0]}",
                     "params": {
                         "_csrf_token": csrf_token(admin_page.body),
                         "_mounts": 0,
@@ -867,7 +861,7 @@ def admin_remove_current(
         if edit_reply.get("status") != "ok":
             raise RuntimeError(f"admin remove returned {edit_reply}")
         verification_page = http_client.request(
-            "GET", "/admin?station=cozy", operation="admin_verify_get"
+            "GET", f"/admin?station={STATION_IDS[0]}", operation="admin_verify_get"
         )
         if verification_page.status != 200:
             raise RuntimeError(
@@ -953,6 +947,8 @@ def endpoint_list(raw: Sequence[str]) -> List[str]:
 
 
 def run_phase(args: argparse.Namespace) -> Dict[str, Any]:
+    if not STATION_IDS or not all(value.isdigit() for value in STATION_IDS):
+        raise ValueError("BENCHMARK_STATION_IDS must contain database station IDs")
     endpoints = endpoint_list(args.endpoint)
     metrics = Metrics()
     refresh_lock = threading.Lock()

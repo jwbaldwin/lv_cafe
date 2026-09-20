@@ -10,7 +10,7 @@ defmodule CafeWeb.AdminLive do
     stations = Stations.list_stations()
 
     station =
-      Enum.find(stations, &(&1.name == (params["station"] || "cozy"))) || List.first(stations)
+      Enum.find(stations, &(to_string(&1.id) == params["station"])) || List.first(stations)
 
     status =
       if params["status"] in ~w(open included dismissed all), do: params["status"], else: "open"
@@ -21,7 +21,11 @@ defmodule CafeWeb.AdminLive do
      socket
      |> assign(
        station: station,
-       station_name: if(station, do: station.name, else: "cozy"),
+       station_id: if(station, do: station.id, else: ""),
+       station_form: to_form(Stations.change_station(station || %Stations.Station{})),
+       new_station: params["new"] == "true",
+       new_station_form: to_form(Stations.change_station(%Stations.Station{}), id: "new-station"),
+       first_video_url: "",
        stations: stations,
        status: status,
        view: view,
@@ -33,15 +37,53 @@ defmodule CafeWeb.AdminLive do
      |> push_event("pause_preview", %{})}
   end
 
-  def handle_event("select", %{"station" => name}, socket) do
-    {:noreply, push_patch(socket, to: ~p"/admin?station=#{name}&status=#{socket.assigns.status}")}
-  end
-
   def handle_event("filter", %{"status" => status}, socket) do
     {:noreply,
      push_patch(socket,
-       to: ~p"/admin?view=inbox&station=#{socket.assigns.station_name}&status=#{status}"
+       to: ~p"/admin?view=inbox&station=#{socket.assigns.station_id}&status=#{status}"
      )}
+  end
+
+  def handle_event("create_station", %{"station" => attrs, "video_url" => url}, socket) do
+    socket = assign(socket, :first_video_url, url)
+
+    case Stations.video_id(url) do
+      nil ->
+        {:noreply,
+         socket
+         |> assign(
+           :new_station_form,
+           to_form(Stations.change_station(%Stations.Station{}, attrs), id: "new-station")
+         )
+         |> put_flash(:error, "Enter a valid YouTube URL or video ID.")}
+
+      id ->
+        case Stations.create_station(
+               Map.put(attrs, "videos", [%{"video_id" => id, "title" => id}])
+             ) do
+          {:ok, station} ->
+            {:noreply,
+             socket
+             |> put_flash(:info, "Station created and available to listeners.")
+             |> push_patch(to: ~p"/admin?station=#{station.id}")}
+
+          {:error, changeset} ->
+            {:noreply, assign(socket, :new_station_form, to_form(changeset, id: "new-station"))}
+        end
+    end
+  end
+
+  def handle_event("save_station", %{"station" => attrs}, socket) do
+    case Stations.update_station(socket.assigns.station, attrs) do
+      {:ok, station} ->
+        finish(socket, {:ok, station})
+
+      {:error, %Ecto.Changeset{} = changeset} ->
+        {:noreply, assign(socket, :station_form, to_form(changeset))}
+
+      {:error, :stale} ->
+        finish(socket, {:error, :stale})
+    end
   end
 
   def handle_event("add", %{"url" => url}, socket),
@@ -156,6 +198,7 @@ defmodule CafeWeb.AdminLive do
     {:noreply,
      socket
      |> assign(:station, station)
+     |> assign(:station_form, to_form(Stations.change_station(station)))
      |> assign(:stations, Stations.list_stations())
      |> put_flash(:info, "Saved. The station is updated for listeners.")
      |> clear_flash(:error)}
@@ -177,9 +220,12 @@ defmodule CafeWeb.AdminLive do
           "Could not save: keep at least one video, avoid duplicates, and check the duration and start offset."
       end
 
+    station = Stations.get_station!(socket.assigns.station.id)
+
     {:noreply,
      socket
-     |> assign(:station, Stations.get_station!(socket.assigns.station.name))
+     |> assign(station: station, station_form: to_form(Stations.change_station(station)))
+     |> assign(:stations, Stations.list_stations())
      |> put_flash(:error, message)}
   end
 
@@ -217,11 +263,11 @@ defmodule CafeWeb.AdminLive do
       </header>
       <nav class="curation-tabs" aria-label="Admin sections">
         <.link
-          patch={~p"/admin?view=stations&station=#{@station_name}&status=#{@status}"}
+          patch={~p"/admin?view=stations&station=#{@station_id}&status=#{@status}"}
           aria-current={if @view == "stations", do: "page"}
         >Stations</.link>
         <.link
-          patch={~p"/admin?view=inbox&station=#{@station_name}&status=#{@status}"}
+          patch={~p"/admin?view=inbox&station=#{@station_id}&status=#{@status}"}
           aria-current={if @view == "inbox", do: "page"}
         >Inbox</.link>
       </nav>
@@ -231,8 +277,26 @@ defmodule CafeWeb.AdminLive do
       <p :if={Phoenix.Flash.get(@flash, :error)} class="curation-notice curation-error" role="alert">
         {Phoenix.Flash.get(@flash, :error)}
       </p>
+      <.link
+        :if={@view == "stations" && !@new_station}
+        patch={~p"/admin?new=true"}
+        class="curation-primary"
+      >+ Add station</.link>
+      <section :if={@new_station} class="curation-card curation-new-station" aria-label="New station">
+        <h1>New station</h1>
+        <.form for={@new_station_form} id="new-station" phx-submit="create_station">
+          <.station_fields form={@new_station_form} />
+          <label>First video · YouTube URL or ID<input
+            name="video_url"
+            value={@first_video_url}
+            required
+          /></label>
+          <button type="submit" class="curation-primary">Create station</button>
+          <.link patch={~p"/admin"}>Cancel</.link>
+        </.form>
+      </section>
       <p :if={!@station && @view == "stations"} role="status">No stations are available yet.</p>
-      <section :if={@station} hidden={@view != "stations"} aria-label="Stations">
+      <section :if={@station && !@new_station} hidden={@view != "stations"} aria-label="Stations">
         <div class="curation-page-heading">
           <div>
             <h1>Stations</h1><p>Choose a station, listen, and fine-tune the lineup.</p>
@@ -244,19 +308,26 @@ defmodule CafeWeb.AdminLive do
             <nav aria-label="Stations">
               <.link
                 :for={p <- @stations}
-                patch={~p"/admin?view=stations&station=#{p.name}&status=#{@status}"}
-                aria-current={if p.name == @station_name, do: "page"}
+                patch={~p"/admin?view=stations&station=#{p.id}&status=#{@status}"}
+                aria-current={if p.id == @station_id, do: "page"}
               >
-                <span>{String.replace(p.name, "_", " ")}</span><span>{length(
-                  if p.name == @station_name, do: @station.videos, else: p.videos
+                <span>{p.name}</span><span>{length(
+                  if p.id == @station_id, do: @station.videos, else: p.videos
                 )}</span>
               </.link>
             </nav>
           </aside>
           <section class="curation-station" aria-label="Selected station">
             <div class="curation-section-heading">
-              <h2>{String.replace(@station_name, "_", " ")}</h2><span>{length(@station.videos)} videos · playback order</span>
+              <h2>{@station.name}</h2><span>{length(@station.videos)} videos · playback order</span>
             </div>
+            <details class="curation-add">
+              <summary>Station settings</summary>
+              <.form for={@station_form} id="station-settings" phx-submit="save_station">
+                <.station_fields form={@station_form} />
+                <button type="submit" class="curation-primary">Save station</button>
+              </.form>
+            </details>
             <details class="curation-add">
               <summary>+ Add a video</summary>
               <.form for={%{}} phx-submit="add" id="add-video">
@@ -340,6 +411,35 @@ defmodule CafeWeb.AdminLive do
         </p>
       </section>
     </main>
+    """
+  end
+
+  defp station_fields(assigns) do
+    ~H"""
+    <.input field={@form[:name]} label="Name" required maxlength="60" />
+    <.input field={@form[:category]} label="Category" required maxlength="60" />
+    <.input field={@form[:shortcut]} label="Keyboard shortcut" required maxlength="1" />
+    <p>One letter or number. P, F, M, T, H, J, K and L are reserved.</p>
+    <.input
+      field={@form[:position]}
+      label="Display order (lowest first)"
+      type="number"
+      min="0"
+      required
+    />
+    <.input field={@form[:image_url]} label="Image URL (optional)" placeholder="https://…" />
+    <.input
+      field={@form[:effect]}
+      label="Effect"
+      type="select"
+      options={[
+        {"None", "none"},
+        {"Snow", "winter"},
+        {"Autumn", "autumn"},
+        {"Summer", "summer"},
+        {"Spring", "spring"}
+      ]}
+    />
     """
   end
 
