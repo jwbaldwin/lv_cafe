@@ -34,7 +34,7 @@ defmodule Cafe.Stations.Station do
         message: "is reserved for player controls"
       )
       |> validate_number(:position, greater_than_or_equal_to: 0)
-      |> validate_inclusion(:effect, effects())
+      |> validate_inclusion(:effect, ~w(none winter autumn summer spring))
       |> validate_length(:image_url, max: 2048)
       |> validate_change(:image_url, &validate_image/2)
       |> unique_constraint(:shortcut)
@@ -49,8 +49,6 @@ defmodule Cafe.Stations.Station do
     # it to persisted snapshots where it guards concurrent edits.
     if station.id, do: optimistic_lock(changeset, :lock_version), else: changeset
   end
-
-  def effects, do: ~w(none winter autumn summer spring)
 
   defp validate_image(:image_url, url) do
     uri = URI.parse(url)

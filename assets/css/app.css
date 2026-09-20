@@ -175,7 +175,6 @@
 .curation-section-heading > span { color: #888; font-size: 12px; }
 .curation-shell .curation-add { border: 1px dashed #444; padding: 12px 16px; margin: 0 0 16px; border-radius: 8px; }
 .curation-add summary { color: #ededed; list-style: none; }
-.curation-create-link { display: inline-block; margin-top: 24px; padding: 8px 12px; border: 1px solid #444; border-radius: 6px; }
 .curation-new-station { max-width: 680px; margin-top: 24px; }
 .curation-card { border: 1px solid #292929; border-radius: 8px; padding: 18px; margin-bottom: 16px; background: #111; }
 .curation-video-heading { display: flex; gap: 16px; align-items: flex-start; }

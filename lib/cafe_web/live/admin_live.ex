@@ -16,15 +16,16 @@ defmodule CafeWeb.AdminLive do
       if params["status"] in ~w(open included dismissed all), do: params["status"], else: "open"
 
     view = if params["view"] == "inbox", do: "inbox", else: "stations"
+    new_station = params["new"] == "true"
+    form_station = if new_station, do: %Stations.Station{}, else: station || %Stations.Station{}
 
     {:noreply,
      socket
      |> assign(
        station: station,
        station_id: if(station, do: station.id, else: ""),
-       station_form: to_form(Stations.change_station(station || %Stations.Station{})),
-       new_station: params["new"] == "true",
-       new_station_form: to_form(Stations.change_station(%Stations.Station{}), id: "new-station"),
+       station_form: to_form(Stations.change_station(form_station)),
+       new_station: new_station,
        first_video_url: "",
        stations: stations,
        status: status,
@@ -47,42 +48,32 @@ defmodule CafeWeb.AdminLive do
   def handle_event("create_station", %{"station" => attrs, "video_url" => url}, socket) do
     socket = assign(socket, :first_video_url, url)
 
-    case Stations.video_id(url) do
+    with id when is_binary(id) <- Stations.video_id(url),
+         {:ok, station} <-
+           Stations.create_station(Map.put(attrs, "videos", [%{"video_id" => id, "title" => id}])) do
+      {:noreply,
+       socket
+       |> put_flash(:info, "Station created and available to listeners.")
+       |> push_patch(to: ~p"/admin?station=#{station.id}")}
+    else
       nil ->
         {:noreply,
          socket
-         |> assign(
-           :new_station_form,
-           to_form(Stations.change_station(%Stations.Station{}, attrs), id: "new-station")
-         )
+         |> assign(:station_form, to_form(Stations.change_station(%Stations.Station{}, attrs)))
          |> put_flash(:error, "Enter a valid YouTube URL or video ID.")}
 
-      id ->
-        case Stations.create_station(
-               Map.put(attrs, "videos", [%{"video_id" => id, "title" => id}])
-             ) do
-          {:ok, station} ->
-            {:noreply,
-             socket
-             |> put_flash(:info, "Station created and available to listeners.")
-             |> push_patch(to: ~p"/admin?station=#{station.id}")}
-
-          {:error, changeset} ->
-            {:noreply, assign(socket, :new_station_form, to_form(changeset, id: "new-station"))}
-        end
+      {:error, changeset} ->
+        {:noreply, assign(socket, :station_form, to_form(changeset))}
     end
   end
 
   def handle_event("save_station", %{"station" => attrs}, socket) do
     case Stations.update_station(socket.assigns.station, attrs) do
-      {:ok, station} ->
-        finish(socket, {:ok, station})
-
       {:error, %Ecto.Changeset{} = changeset} ->
         {:noreply, assign(socket, :station_form, to_form(changeset))}
 
-      {:error, :stale} ->
-        finish(socket, {:error, :stale})
+      result ->
+        finish(socket, result)
     end
   end
 
@@ -284,8 +275,8 @@ defmodule CafeWeb.AdminLive do
       >+ Add station</.link>
       <section :if={@new_station} class="curation-card curation-new-station" aria-label="New station">
         <h1>New station</h1>
-        <.form for={@new_station_form} id="new-station" phx-submit="create_station">
-          <.station_fields form={@new_station_form} />
+        <.form for={@station_form} id="new-station" phx-submit="create_station">
+          <.station_fields form={@station_form} />
           <label>First video · YouTube URL or ID<input
             name="video_url"
             value={@first_video_url}
@@ -311,9 +302,7 @@ defmodule CafeWeb.AdminLive do
                 patch={~p"/admin?view=stations&station=#{p.id}&status=#{@status}"}
                 aria-current={if p.id == @station_id, do: "page"}
               >
-                <span>{p.name}</span><span>{length(
-                  if p.id == @station_id, do: @station.videos, else: p.videos
-                )}</span>
+                <span>{p.name}</span><span>{length(p.videos)}</span>
               </.link>
             </nav>
           </aside>

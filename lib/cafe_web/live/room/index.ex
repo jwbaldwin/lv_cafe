@@ -170,40 +170,23 @@ defmodule CafeWeb.RoomLive do
   end
 
   def handle_info({:station_updated, station}, socket) do
-    previous = Map.get(socket.assigns.catalog, to_string(station.id))
+    id = to_string(station.id)
+    previous = Map.get(socket.assigns.catalog, id)
 
     if previous && previous.lock_version >= station.lock_version do
       {:noreply, socket}
     else
-      socket =
-        assign(socket, :catalog, Map.put(socket.assigns.catalog, to_string(station.id), station))
+      socket = assign(socket, :catalog, Map.put(socket.assigns.catalog, id, station))
 
-      if socket.assigns.station && socket.assigns.station.id == station.id do
-        current = socket.assigns.playback
-
-        position =
-          if current,
-            do:
-              Enum.find_index(station.videos, &(&1.video_id == current.video_id)) ||
-                current.position,
-            else: 0
-
-        next = playback(station, position)
-        socket = assign(socket, :station, station)
-
-        # Reordering/metadata edits preserve playback; removal selects a replacement.
-        socket =
-          if current && next && next.video_id == current.video_id,
-            do: assign(socket, :playback, next),
-            else: socket |> assign(:failed_videos, MapSet.new()) |> change_video(next)
-
-        {:noreply, socket}
-      else
-        if socket.assigns.station do
-          {:noreply, socket}
-        else
+      cond do
+        is_nil(socket.assigns.station) ->
           select_station(socket, station)
-        end
+
+        socket.assigns.station.id == station.id ->
+          {:noreply, refresh_current_station(socket, station)}
+
+        true ->
+          {:noreply, socket}
       end
     end
   end
@@ -222,6 +205,24 @@ defmodule CafeWeb.RoomLive do
       nil -> {:noreply, socket}
       station -> select_station(socket, station)
     end
+  end
+
+  defp refresh_current_station(socket, station) do
+    current = socket.assigns.playback
+
+    position =
+      if current,
+        do:
+          Enum.find_index(station.videos, &(&1.video_id == current.video_id)) || current.position,
+        else: 0
+
+    next = playback(station, position)
+    socket = assign(socket, :station, station)
+
+    # Reordering/metadata edits preserve playback; removal selects a replacement.
+    if current && next && next.video_id == current.video_id,
+      do: assign(socket, :playback, next),
+      else: socket |> assign(:failed_videos, MapSet.new()) |> change_video(next)
   end
 
   defp select_station(socket, station) do
