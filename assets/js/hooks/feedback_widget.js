@@ -12,7 +12,7 @@ export default {
     this.onShortcut = event => {
       if (event.key !== "f" || event.repeat || event.isComposing || event.metaKey || event.ctrlKey || event.altKey) return;
       if (event.target.closest('input, textarea, select, [contenteditable]')) return;
-      const picker = document.querySelector('[data-theme-picker]');
+      const picker = document.querySelector('[data-station-picker]');
       if (picker && getComputedStyle(picker).display !== 'none') return;
       event.preventDefault();
       this.toggle.click();

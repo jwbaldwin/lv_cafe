@@ -10,43 +10,17 @@ defmodule CafeWeb.Presence do
     otp_app: :cafe,
     pubsub_server: Cafe.PubSub
 
-  alias Cafe.Stations
-
   def init(_opts) do
-    # user-land state
     {:ok, %{}}
   end
 
-  def fetch(_topic, presences) do
-    for {key, %{metas: [meta | metas]}} <- presences, into: %{} do
-      # user could be populated here from the database here we populate
-      {key, %{metas: [meta | metas]}}
-    end
-  end
-
-  def handle_metas(topic, %{joins: joins, leaves: leaves}, _presences, state) do
-    # For joins, we just need to broadcast the session_id
-    for {session_id, _presence} <- joins do
-      msg = {__MODULE__, {:join, session_id}}
-      Phoenix.PubSub.local_broadcast(Cafe.PubSub, "proxy:#{topic}", msg)
-    end
-
-    # For leaves, same simplification
-    for {session_id, _presence} <- leaves do
-      msg = {__MODULE__, {:leave, session_id}}
-      Phoenix.PubSub.local_broadcast(Cafe.PubSub, "proxy:#{topic}", msg)
-    end
-
+  def handle_metas(_topic, _diff, _presences, state) do
     Phoenix.PubSub.broadcast(Cafe.PubSub, "listeners", :listeners_changed)
     {:ok, state}
   end
 
-  def list_all_listener_counts() do
-    Stations.all_stations()
-    |> Enum.reduce(%{}, fn station, acc ->
-      station = Atom.to_string(station)
-      Map.put(acc, station, list_online_users(station))
-    end)
+  def list_all_listener_counts(station_ids) do
+    Map.new(station_ids, &{&1, list_online_users(&1)})
   end
 
   def list_online_users(station),
@@ -55,6 +29,4 @@ defmodule CafeWeb.Presence do
   def track_user(station, name, params \\ %{}) do
     track(self(), station, name, params)
   end
-
-  def subscribe(station), do: Phoenix.PubSub.subscribe(Cafe.PubSub, "proxy:#{station}")
 end

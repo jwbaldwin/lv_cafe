@@ -15,7 +15,7 @@ The phases run in order:
 
 The Python client uses real Phoenix LiveView WebSocket sessions and asserts successful joins, admin edits, and player refreshes. It does not stream YouTube video: those bytes go directly between YouTube and listeners' browsers. Each candidate has its own PubSub process; overlap checks exercise admin saves and listeners on each container, not distributed PubSub. Normal deployments drain the retiring container and clients reconnect with a fresh catalog.
 
-Every phase begins with the same disposable catalog. Container memory is sampled using Docker's normal reporting; host available memory is recorded separately. A low-headroom check stops the run. Containers have memory and CPU limits, a remote ten-minute timeout, and cleanup handlers. Production settings are not tuned by this measurement.
+Every phase begins with the same disposable catalog. The runner reads its station IDs into `BENCHMARK_STATION_IDS`; the client selects those records rather than hardcoded station names. Container memory is sampled using Docker's normal reporting; host available memory is recorded separately. A low-headroom check stops the run. Containers have memory and CPU limits, a remote ten-minute timeout, and cleanup handlers. Production settings are not tuned by this measurement.
 
 For a manual run, first configure the existing SSH agent and pinned known_hosts entry, then set `CANDIDATE_IMAGE`, `MEMORY_BENCHMARK_SERVER`, `KAMAL_REGISTRY_USERNAME`, and `KAMAL_REGISTRY_PASSWORD` and run `scripts/measure-memory.sh`. The image must be the exact commit built by CI. The default output directory is `artifacts/memory`; do not put credentials in command-line arguments or source files.
 

@@ -7,13 +7,13 @@ export function nextGridIndex(index, key, columns, count) {
   return index;
 }
 
-const ThemePicker = {
+const StationPicker = {
   mounted() {
-    this.picker = this.el.querySelector('[data-theme-picker]');
-    this.toggle = this.el.querySelector('[data-theme-picker-toggle]');
+    this.picker = this.el.querySelector('[data-station-picker]');
+    this.toggle = this.el.querySelector('[data-station-picker-toggle]');
     const isOpen = () => getComputedStyle(this.picker).display !== 'none';
-    const choices = () => [...this.picker.querySelectorAll('[data-theme-key]')];
-    const selected = () => this.picker.querySelector('[data-theme-selected="true"]') || choices()[0];
+    const choices = () => [...this.picker.querySelectorAll('[data-station-key]')];
+    const selected = () => this.picker.querySelector('[data-station-selected="true"]') || choices()[0];
     const focus = (choice) => {
       choice.focus({ preventScroll: true });
       choice.scrollIntoView({ block: 'nearest', inline: 'nearest' });
@@ -47,8 +47,8 @@ const ThemePicker = {
         return;
       }
       if (!isOpen()) return;
-      const theme = this.el.querySelector(`[data-theme-key="${CSS.escape(event.key)}"]`);
-      if (theme) theme.click();
+      const station = this.el.querySelector(`[data-station-key="${CSS.escape(event.key)}"]`);
+      if (station) station.click();
     };
     window.addEventListener('keydown', this.onKeyDown, true);
     window.addEventListener('keyup', this.onKeyUp);
@@ -60,4 +60,4 @@ const ThemePicker = {
     window.removeEventListener('keyup', this.onKeyUp);
   },
 };
-export default ThemePicker;
+export default StationPicker;

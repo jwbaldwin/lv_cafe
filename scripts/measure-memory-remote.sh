@@ -115,8 +115,10 @@ phase() {
   # Reset only the disposable database so every phase starts with the same catalog.
   docker exec "$pg" psql -U postgres -d vibes_memory -v ON_ERROR_STOP=1 -c 'TRUNCATE stations' >/dev/null
   release /app/bin/cafe eval Cafe.Release.seed >/dev/null 2>&1
+  local station_ids
+  station_ids=$(docker exec "$pg" psql -U postgres -d vibes_memory -Atc 'SELECT id FROM stations ORDER BY position, id')
   printf '%s\n' "$name" > "$work/phase"
-  docker run --rm --name "$client" --label "vibes-memory=$prefix" --network "$network" --memory 256m --cpus .5 -e "BENCHMARK_ADMIN_PASSWORD=$admin" -v "$work/measure-memory-client.py:/client.py:ro" -v "$work/results:/results" "$python" python /client.py --clients "$listeners" --duration 25 --output "/results/$name.json" "$@"
+  docker run --rm --name "$client" --label "vibes-memory=$prefix" --network "$network" --memory 256m --cpus .5 -e "BENCHMARK_ADMIN_PASSWORD=$admin" -e "BENCHMARK_STATION_IDS=$station_ids" -v "$work/measure-memory-client.py:/client.py:ro" -v "$work/results:/results" "$python" python /client.py --clients "$listeners" --duration 25 --output "/results/$name.json" "$@"
   test ! -e "$work/results/pressure-abort.txt"
 }
 phase listeners-25 25 --endpoint "http://$app_a:4000"

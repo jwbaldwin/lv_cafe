@@ -1,35 +1,23 @@
-defmodule CafeWeb.ThemeSwitcher do
+defmodule CafeWeb.StationPicker do
   use CafeWeb, :live_component
 
-  alias Cafe.Stations
-
-  def mount(socket) do
-    stations = Stations.get_stations(Stations.all_stations())
-
-    socket =
-      socket
-      |> assign(:seasons, station_shortcuts(stations, Stations.get_seasons()))
-      |> assign(:vibes, station_shortcuts(stations, Stations.get_vibes()))
-
-    {:ok, socket}
+  def update(assigns, socket) do
+    stations = assigns.catalog |> Map.values() |> Enum.sort_by(&{&1.position, &1.id})
+    {:ok, socket |> assign(assigns) |> assign(:stations, stations)}
   end
 
-  def handle_event("select_theme", %{"theme" => theme, "sub_theme" => sub_theme}, socket) do
-    select_theme(socket, theme, sub_theme)
-  end
-
-  defp select_theme(socket, theme, sub_theme) do
-    send(self(), {:change_theme, theme, sub_theme})
+  def handle_event("select_station", %{"id" => id}, socket) do
+    send(self(), {:select_station, id})
     {:noreply, socket}
   end
 
   def render(assigns) do
     ~H"""
-    <div id="themes" phx-hook="ThemePicker" class="absolute top-8 right-28 z-[90]">
+    <div id="stations" phx-hook="StationPicker" class="absolute top-8 right-28 z-[90]">
       <button
         phx-click={toggle_picker()}
-        id="theme-picker-toggle"
-        data-theme-picker-toggle
+        id="station-picker-toggle"
+        data-station-picker-toggle
         class="p-2 text-white svg-shadow-red z-[90]"
       >
         <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -53,67 +41,48 @@ defmodule CafeWeb.ThemeSwitcher do
         </svg>
       </button>
       <div
-        id="theme-picker"
-        data-theme-picker
+        id="station-picker"
+        data-station-picker
         phx-click={hide_picker()}
         class="fixed inset-0 hidden overflow-y-auto bg-black/80"
       >
         <div class="flex min-h-full flex-col items-center px-4 py-16 sm:px-8 sm:py-20">
           <h2 class="pb-4 text-base text-white text-shadow-green">
-            pick a season or vibe
+            pick a station
           </h2>
           <div class="grid grid-cols-2 place-content-center gap-4 sm:grid-cols-3 sm:gap-6 lg:grid-cols-5">
             <button
-              :for={season <- @seasons}
-              id={"theme-#{elem(season, 0)}"}
+              :for={station <- @stations}
+              id={"station-#{station.id}"}
               class="text-center group"
-              phx-click={JS.push("select_theme") |> hide_picker()}
-              data-theme-key={elem(season, 1).char}
-              data-theme-selected={to_string(@preferences.sub_theme == elem(season, 0))}
-              phx-value-theme={:seasons}
-              phx-value-sub_theme={elem(season, 0)}
+              phx-click={JS.push("select_station") |> hide_picker()}
+              data-station-key={station.shortcut}
+              data-station-selected={to_string(@selected_id == station.id)}
+              phx-value-id={station.id}
               phx-target={@myself}
             >
-              <img
-                src={~p"/images/themes/seasons/#{elem(season, 0)}/thumbs/1.webp"}
-                alt={"#{elem(season, 0)} theme"}
-                decoding="async"
-                class={[
-                  "h-28 w-28 rounded-lg object-cover group-hover:ring-2 group-hover:ring-white/50 sm:h-32 sm:w-32",
-                  @preferences.sub_theme == elem(season, 0) && "ring-2 ring-green-500/80"
-                ]}
-              />
-              <span class="pt-2 text-xs text-white text-shadow-green">
-                {elem(season, 1).name}
+              <div class={[
+                "h-28 w-28 rounded-lg overflow-hidden bg-zinc-800 group-hover:ring-2 group-hover:ring-white/50 sm:h-32 sm:w-32",
+                @selected_id == station.id && "ring-2 ring-green-500/80"
+              ]}>
+                <img
+                  :if={station.image_url}
+                  src={station.image_url}
+                  alt=""
+                  decoding="async"
+                  class="h-full w-full object-cover"
+                />
+                <span
+                  :if={!station.image_url}
+                  class="flex h-full items-center justify-center text-3xl text-white"
+                >♫</span>
+              </div>
+              <span class="block pt-2 text-xs text-white text-shadow-green">
+                [{station.shortcut}] {station.name}
                 <span class="inline-block w-1.5 h-1.5 ml-1.5 bg-red-400"></span>
-                {Map.get(@listener_counts, Atom.to_string(elem(season, 0)))}
+                {Map.get(@listener_counts, to_string(station.id), 0)}
               </span>
-            </button>
-            <button
-              :for={vibe <- @vibes}
-              id={"theme-#{elem(vibe, 0)}"}
-              class="text-center group"
-              phx-click={JS.push("select_theme") |> hide_picker()}
-              data-theme-key={elem(vibe, 1).char}
-              data-theme-selected={to_string(@preferences.sub_theme == elem(vibe, 0))}
-              phx-value-theme={:vibes}
-              phx-value-sub_theme={elem(vibe, 0)}
-              phx-target={@myself}
-            >
-              <img
-                src={~p"/images/themes/vibes/#{elem(vibe, 0)}/thumbs/1.webp"}
-                alt={"#{elem(vibe, 0)} theme"}
-                decoding="async"
-                class={[
-                  "h-28 w-28 rounded-lg object-cover group-hover:ring-2 group-hover:ring-white/50 sm:h-32 sm:w-32",
-                  @preferences.sub_theme == elem(vibe, 0) && "ring-2 ring-green-500/80"
-                ]}
-              />
-              <span class="pt-2 text-xs text-white text-shadow-green">
-                {elem(vibe, 1).name}
-                <span class="inline-block w-1.5 h-1.5 ml-1.5 bg-red-400"></span>
-                {Map.get(@listener_counts, Atom.to_string(elem(vibe, 0)))}
-              </span>
+              <span class="block text-xs text-white/60">{station.category}</span>
             </button>
           </div>
         </div>
@@ -124,7 +93,7 @@ defmodule CafeWeb.ThemeSwitcher do
 
   defp toggle_picker(js \\ %JS{}) do
     JS.toggle(js,
-      to: "#theme-picker",
+      to: "#station-picker",
       in: {"ease-out duration-100", "opacity-0", "opacity-100"},
       out: {"ease-in duration-100", "opacity-100", "opacity-0"}
     )
@@ -132,13 +101,9 @@ defmodule CafeWeb.ThemeSwitcher do
 
   defp hide_picker(js \\ %JS{}) do
     JS.hide(js,
-      to: "#theme-picker",
+      to: "#station-picker",
       time: 100,
       transition: {"ease-in duration-100", "opacity-100", "opacity-0"}
     )
-  end
-
-  defp station_shortcuts(stations, names) do
-    Enum.map(names, &{&1, Map.fetch!(stations, &1)})
   end
 end

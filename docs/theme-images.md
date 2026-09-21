@@ -1,12 +1,12 @@
 # Theme image assets
 
-The theme picker is the only runtime consumer of the bundled theme image tree. `CafeWeb.ThemeSwitcher` renders one thumbnail for each of the 10 themes from `priv/static/images/themes/{seasons,vibes}/*/thumbs/1.webp`. The static endpoint already serves the `images` directory, so no endpoint or build configuration change is needed.
+`CafeWeb.StationPicker` renders each station’s stored `image_url`. The initial catalog points to the 10 bundled thumbnails in `priv/static/images/themes/{seasons,vibes}/*/thumbs/1.webp`; admin-created stations can use other local paths, HTTPS images, or a music-icon placeholder. The static endpoint already serves the `images` directory.
 
 ## Inventory and cleanup
 
-The reference scan covered Elixir, HEEx, JavaScript, CSS, configuration, tests, and documentation. It found 10 thumbnail references, all under `thumbs/1.gif`, and no references to the 15 additional `thumbs/2.gif` through `thumbs/4.gif` files or the 25 full-size `*/1.png` through `*/4.png` files. The full-size PNGs and additional thumbnail GIFs were orphaned assets; the current player uses YouTube for the visual background and the picker uses one thumbnail per theme. All 40 orphaned files were removed.
+At the time of the image cleanup, the reference scan covered Elixir, HEEx, JavaScript, CSS, configuration, tests, and documentation. It found 10 thumbnail references, all under `thumbs/1.gif`, and no references to the 15 additional `thumbs/2.gif` through `thumbs/4.gif` files or the 25 full-size `*/1.png` through `*/4.png` files. The full-size PNGs and additional thumbnail GIFs were orphaned assets; the current player uses YouTube for the visual background and the picker uses one thumbnail per theme. All 40 orphaned files were removed.
 
-Every source thumbnail was checked with `ffprobe`: each is a single-frame GIF, with no animation to preserve. The image metadata also reports RGB without alpha. The 10 referenced thumbnails were converted to lossless WebP at their original dimensions, and the HEEx paths now use `.webp`.
+Every source thumbnail was checked with `ffprobe`: each is a single-frame GIF, with no animation to preserve. The image metadata also reports RGB without alpha. The 10 referenced thumbnails were converted to lossless WebP at their original dimensions, and the initial station image URLs use `.webp`.
 
 | inventory | files | bytes | MiB |
 | --- | ---: | ---: | ---: |
@@ -30,7 +30,7 @@ Run `scripts/optimize_theme_images.sh --remove-orphans` from the repository root
 
 Each converted WebP was decoded and compared with its source GIF after frame extraction. All 10 files retained their original width and height, and all 10 had byte-identical RGB pixel buffers. FFmpeg reported SSIM `1.000000` for every pair and PSNR `inf` for every pair. Representative originals and WebP outputs were also inspected at their native thumbnail size; no visual difference was visible.
 
-The orphan decision can be rechecked with:
+Scan repository references with:
 
 ```sh
 rg -n --hidden \
@@ -41,7 +41,7 @@ rg -n --hidden \
   -g '!scripts/optimize_theme_images.sh' \
   -e 'themes/.+\.(png|gif|webp)' \
   -e 'thumbs/.+\.(png|gif|webp)' \
-  lib assets config test
+  lib assets config test priv/repo
 ```
 
-The only expected matches are the two WebP path expressions in `lib/cafe_web/live/components/theme_switcher.ex`; no full-size PNG or extra thumbnail remains in the static tree.
+Bundled image paths are now recorded in the station seed data and settings migration. `lib/cafe_web/live/components/station_picker.ex` reads the URL from each station record. Before removing an asset, also inspect `SELECT id, name, image_url FROM stations`: admin edits live in Postgres, so a repository search alone cannot establish that an image is unused.

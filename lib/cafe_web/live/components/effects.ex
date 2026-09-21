@@ -1,9 +1,9 @@
 defmodule CafeWeb.Effects do
   use CafeWeb, :html
 
-  attr :effect, :atom, default: :winter
+  attr :effect, :string, default: "none"
 
-  def effect(%{effect: :winter} = assigns) do
+  def effect(%{effect: "winter"} = assigns) do
     ~H"""
     <div class="snow-effect">
       <div class="initial-snow">
@@ -62,19 +62,19 @@ defmodule CafeWeb.Effects do
     """
   end
 
-  def effect(%{effect: :autumn} = assigns) do
+  def effect(%{effect: "autumn"} = assigns) do
     ~H"""
     <div class="autumn-effect"></div>
     """
   end
 
-  def effect(%{effect: :summer} = assigns) do
+  def effect(%{effect: "summer"} = assigns) do
     ~H"""
     <div class="summer-effect"></div>
     """
   end
 
-  def effect(%{effect: :spring} = assigns) do
+  def effect(%{effect: "spring"} = assigns) do
     ~H"""
     <div class="spring-effect"></div>
     """

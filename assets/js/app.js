@@ -22,8 +22,8 @@ import { Socket } from "phoenix";
 import { LiveSocket } from "phoenix_live_view";
 import topbar from "../vendor/topbar";
 import YouTubePlayer from "./hooks/youtube_player.js";
-import Preferences from "./hooks/preferences.js";
-import ThemePicker from "./hooks/theme_picker.js";
+import StationSelection from "./hooks/station_selection.js";
+import StationPicker from "./hooks/station_picker.js";
 import AdminPreview from "./hooks/admin_preview.js";
 
 import FeedbackWidget from "./hooks/feedback_widget.js";
@@ -31,8 +31,8 @@ import FeedbackWidget from "./hooks/feedback_widget.js";
 let Hooks = {
   FeedbackWidget,
   YouTubePlayer: YouTubePlayer,
-  Preferences: Preferences,
-  ThemePicker: ThemePicker,
+  StationSelection,
+  StationPicker,
   AdminPreview,
 };
 
@@ -41,13 +41,10 @@ let csrfToken = document
   .getAttribute("content");
 let liveSocket = new LiveSocket("/live", Socket, {
   longPollFallbackMs: 2500,
-  params: {
+  params: () => ({
     _csrf_token: csrfToken,
-    preferences: JSON.parse(localStorage.getItem("preferences")) || {
-      theme: "seasons",
-      sub_theme: "winter",
-    },
-  },
+    station_id: localStorage.getItem("station_id"),
+  }),
   hooks: Hooks,
 });
 

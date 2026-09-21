@@ -1,4 +1,5 @@
 defmodule Cafe.CurationTest do
+  import Cafe.StationsFixtures
   use Cafe.DataCase
 
   alias Cafe.{Curation, Repo, Stations}
@@ -52,7 +53,7 @@ defmodule Cafe.CurationTest do
                "station_name" => "cozy"
              })
 
-    station = Stations.get_station!(:cozy)
+    station = station_named(:cozy)
     assert {:ok, updated} = Stations.accept_suggestion(feedback.id, station)
     assert List.last(updated.videos).video_id == feedback.video_id
     assert Repo.get!(Feedback, feedback.id).status == "reviewed"
@@ -70,7 +71,7 @@ defmodule Cafe.CurationTest do
   end
 
   test "notes remain after their video is removed" do
-    station = Stations.get_station!(:cozy)
+    station = station_named(:cozy)
     video = hd(station.videos)
 
     assert {:ok, note} =
