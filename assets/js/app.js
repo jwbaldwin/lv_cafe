@@ -25,11 +25,13 @@ import YouTubePlayer from "./hooks/youtube_player.js";
 import StationSelection from "./hooks/station_selection.js";
 import StationPicker from "./hooks/station_picker.js";
 import AdminPreview from "./hooks/admin_preview.js";
+import StationSwitch from "./hooks/station_switch.js";
 
 import FeedbackWidget from "./hooks/feedback_widget.js";
 
 let Hooks = {
   FeedbackWidget,
+  StationSwitch,
   YouTubePlayer: YouTubePlayer,
   StationSelection,
   StationPicker,

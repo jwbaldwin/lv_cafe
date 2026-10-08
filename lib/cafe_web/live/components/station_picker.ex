@@ -43,10 +43,11 @@ defmodule CafeWeb.StationPicker do
       <div
         id="station-picker"
         data-station-picker
+        phx-hook="StationSwitch"
         phx-click={hide_picker()}
         class="fixed inset-0 hidden overflow-y-auto bg-black/80"
       >
-        <div class="flex min-h-full flex-col items-center px-4 py-16 sm:px-8 sm:py-20">
+        <div class="flex min-h-full flex-col items-center px-4 py-16 transition-transform duration-200 ease-out-quint sm:px-8 sm:py-20">
           <h2 class="pb-4 text-base text-white text-shadow-green">
             pick a station
           </h2>
@@ -55,14 +56,14 @@ defmodule CafeWeb.StationPicker do
               :for={station <- @stations}
               id={"station-#{station.id}"}
               class="text-center group"
-              phx-click={JS.push("select_station") |> hide_picker()}
+              phx-click={JS.dispatch("station:pick") |> JS.push("select_station")}
               data-station-key={station.shortcut}
               data-station-selected={to_string(@selected_id == station.id)}
               phx-value-id={station.id}
               phx-target={@myself}
             >
               <div class={[
-                "h-28 w-28 rounded-lg overflow-hidden bg-zinc-800 group-hover:ring-2 group-hover:ring-white/50 sm:h-32 sm:w-32",
+                "h-28 w-28 rounded-lg overflow-hidden bg-zinc-800 transition-shadow duration-150 ease-out group-hover:ring-2 group-hover:ring-white/50 sm:h-32 sm:w-32",
                 @selected_id == station.id && "ring-2 ring-green-500/80"
               ]}>
                 <img
@@ -94,8 +95,10 @@ defmodule CafeWeb.StationPicker do
   defp toggle_picker(js \\ %JS{}) do
     JS.toggle(js,
       to: "#station-picker",
-      in: {"ease-out duration-100", "opacity-0", "opacity-100"},
-      out: {"ease-in duration-100", "opacity-100", "opacity-0"}
+      in:
+        {"ease-out-quint duration-200", "opacity-0 *:translate-y-2",
+         "opacity-100 *:translate-y-0"},
+      out: {"ease-out duration-100", "opacity-100", "opacity-0"}
     )
   end
 
@@ -103,7 +106,7 @@ defmodule CafeWeb.StationPicker do
     JS.hide(js,
       to: "#station-picker",
       time: 100,
-      transition: {"ease-in duration-100", "opacity-100", "opacity-0"}
+      transition: {"ease-out duration-100", "opacity-100", "opacity-0"}
     )
   end
 end

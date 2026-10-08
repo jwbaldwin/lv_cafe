@@ -21,7 +21,7 @@ test('reconnecting uses the latest station saved by the selection hook', () => {
     document: {querySelector: () => ({getAttribute: () => 'csrf'}), addEventListener() {}},
     LiveSocket: class {constructor(_url, _socket, options) {this.options = options;} connect() {}},
     Socket: {}, topbar: {config() {}},
-    StationSelection, StationPicker: {}, YouTubePlayer: {}, AdminPreview: {}, FeedbackWidget: {},
+    StationSelection, StationPicker: {}, StationSwitch: {}, YouTubePlayer: {}, AdminPreview: {}, FeedbackWidget: {},
   });
   assert.equal(window.liveSocket.options.params().station_id, '1');
   handlers.get('store_station')({station_id: '42'});

@@ -98,7 +98,7 @@ defmodule CafeWeb.Components.PlayerControls do
             <%= for block <- 1..10 do %>
               <div
                 class={[
-                  "w-3 h-4 rounded-sm",
+                  "w-3 h-4 rounded-sm transition-colors duration-150 ease-out",
                   if(block <= div(@volume, 10),
                     do: "bg-white/90",
                     else: "bg-green-800/50"
@@ -140,8 +140,12 @@ defmodule CafeWeb.Components.PlayerControls do
           </button>
         </div>
       </div>
-      <div>
-        <span class="px-4 text-white text-shadow-green lowercase text-sm">
+      <div class="min-h-5">
+        <span
+          :if={@title}
+          id={"now-playing-#{:erlang.phash2(@title)}"}
+          class="now-playing px-4 text-white text-shadow-green lowercase text-sm"
+        >
           {@title}
         </span>
       </div>

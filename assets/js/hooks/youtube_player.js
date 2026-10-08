@@ -1,4 +1,5 @@
 const playbackKeys = { ' ': 'toggle', m: 'mute', ArrowUp: 'louder', ArrowDown: 'quieter' };
+const statesShowingAFrame = [1, 2, 5];
 
 const YouTubePlayer = {
   mounted() {
@@ -37,10 +38,12 @@ const YouTubePlayer = {
       this.failed = false;
       this.isPlaying = false;
       this.loading = this.wantsToPlay;
+      this.showVideo(false);
       if (this.isReady) this.loadVideo();
     });
     this.handleEvent('playerUnavailable', () => {
       clearTimeout(this.loadTimeout);
+      this.showVideo(false);
       this.loading = false;
       this.isPlaying = false;
       this.failed = true;
@@ -95,6 +98,7 @@ const YouTubePlayer = {
         onError: ({ data }) => {
           if (this.disposed || this.failed) return;
           clearTimeout(this.loadTimeout);
+          this.showVideo(false);
           this.loading = false;
           this.isPlaying = false;
           this.failed = true;
@@ -117,6 +121,7 @@ const YouTubePlayer = {
     const key = `${data.video_id}:${state}`;
     if (key === this.lastState) return;
     this.lastState = key;
+    if (statesShowingAFrame.includes(state)) this.showVideo(true);
     if (state === 1) {
       clearTimeout(this.loadTimeout);
       this.loading = false;
@@ -193,6 +198,7 @@ const YouTubePlayer = {
     }, 15000);
   },
 
+  showVideo(visible) { this.el.classList.toggle('video-visible', visible); },
   status(message) { this.pushEvent('player_status', { video_id: this.currentVideoId, message }); },
   reportState() { this.pushEvent('player_state', { playing: this.isPlaying, muted: this.muted, volume: this.volume }); },
 

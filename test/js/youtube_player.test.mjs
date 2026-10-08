@@ -17,7 +17,9 @@ function setup() {
   };
   globalThis.document = { addEventListener() {}, removeEventListener() {} };
   globalThis.window = { location: {origin:'http://localhost'}, YT: { Player: function(id, options) {config=options;return player;} } };
-  const instance = {...hook, el:{dataset:{videoId:'abcdefghijk'}}, pushEvent:(name,data)=>events.push([name,data]), handleEvent:(name,handler)=>handlers[name]=handler};
+  const classes = new Set();
+  const classList = { toggle: (name, on) => on ? classes.add(name) : classes.delete(name), contains: name => classes.has(name) };
+  const instance = {...hook, el:{dataset:{videoId:'abcdefghijk'}, classList}, pushEvent:(name,data)=>events.push([name,data]), handleEvent:(name,handler)=>handlers[name]=handler};
   instance.mounted();
   const ready = () => config.events.onReady();
   const state = data => {player.state=data;config.events.onStateChange({data,target:player});};
@@ -86,6 +88,18 @@ test('actual playback events update the icon and advance ended videos', () => {
     t.ready();t.state(1);assert.equal(t.events.at(-1)[1].playing,true);
     t.state(2);assert.equal(t.events.at(-1)[1].playing,false);
     t.state(0);assert.equal(t.events.at(-1)[0],'player_ended');
+  } finally {t.instance.destroyed();}
+});
+test('the video stays hidden until a switched station shows a frame', () => {
+  const t=setup();
+  const visible = () => t.instance.el.classList.contains('video-visible');
+  try {
+    t.ready();assert.equal(visible(),false);
+    t.state(3);assert.equal(visible(),false);
+    t.state(1);assert.equal(visible(),true);
+    t.handlers.changeVideo({video_id:'newvideo123',volume:50});assert.equal(visible(),false);
+    t.state(1);assert.equal(visible(),true);
+    t.config.events.onError({data:100,target:t.player});assert.equal(visible(),false);
   } finally {t.instance.destroyed();}
 });
 test('pressing play during initial loading does not accidentally pause', () => {

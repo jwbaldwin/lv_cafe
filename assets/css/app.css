@@ -8,6 +8,8 @@
 @theme {
   --color-brand: #fd4f00;
   --font-sans: "Pixelify Sans", sans-serif;
+  --ease-out-quint: cubic-bezier(0.23, 1, 0.32, 1);
+  --ease-drawer: cubic-bezier(0.32, 0.72, 0, 1);
 }
 
 @custom-variant phx-click-loading (.phx-click-loading&, .phx-click-loading &);
@@ -118,6 +120,46 @@
       drop-shadow(0 0 30px rgb(200 200 200))
       drop-shadow(0 0 60px rgb(255 255 255));
   }
+}
+
+.station-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  image-rendering: pixelated;
+  filter: brightness(.75);
+}
+
+.yt-wrapper { opacity: 0; transition: opacity 200ms ease-out; }
+.yt-wrapper.video-visible { opacity: 1; transition: opacity 1s ease; }
+
+.switching-station .station-backdrop { view-transition-name: station-backdrop; }
+::view-transition-group(station-backdrop) {
+  animation-duration: 450ms;
+  animation-timing-function: var(--ease-drawer);
+}
+::view-transition-old(station-backdrop) { display: none; }
+::view-transition-new(station-backdrop) {
+  animation: none;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+::view-transition-old(root), ::view-transition-new(root) { animation-duration: 200ms; }
+
+@keyframes now-playing-in {
+  from { opacity: 0; filter: blur(3px); }
+}
+.now-playing { animation: now-playing-in 600ms var(--ease-out-quint); }
+
+#home button { transition: scale 120ms var(--ease-out-quint); }
+#home button:active { scale: .94; }
+
+@media (prefers-reduced-motion: reduce) {
+  #home button:active { scale: none; }
 }
 
 /* Match keyboard focus to the player's white ASCII controls. */

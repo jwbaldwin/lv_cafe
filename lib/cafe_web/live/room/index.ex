@@ -103,8 +103,15 @@ defmodule CafeWeb.RoomLive do
             muted={@muted}
             id="controls"
           />
+          <img
+            :if={@station.image_url}
+            id="station-backdrop"
+            src={@station.image_url}
+            alt=""
+            class="station-backdrop"
+          />
           <div
-            class="yt-wrapper fixed inset-0 z-0 overflow-hidden bg-black"
+            class="yt-wrapper fixed inset-0 z-0 overflow-hidden"
             id="youtube-player-container"
             phx-hook="YouTubePlayer"
             data-video-id={@playback.video_id}
