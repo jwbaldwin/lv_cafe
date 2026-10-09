@@ -145,7 +145,8 @@ jobs:
 
           postgres --dbname=cafe -v ON_ERROR_STOP=1 <<'SQL'
           CREATE ROLE vibes_app LOGIN PASSWORD 'disposable';
-          CREATE SCHEMA vibes AUTHORIZATION vibes_app;
+          CREATE SCHEMA vibes;
+          GRANT USAGE, CREATE ON SCHEMA vibes TO vibes_app;
           ALTER ROLE vibes_app IN DATABASE cafe SET search_path TO vibes;
           SQL
           docker pull "$image"

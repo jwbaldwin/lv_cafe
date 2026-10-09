@@ -24,14 +24,22 @@ For small projects, reuse PlanetScale `weirdbit/arda` with a separate schema and
 
 Create one app role with no inherited database-wide permissions. Use it for both runtime queries and migrations. PlanetScale's display name is not the SQL role identifier: get the `username` from the creation response and use the part before the dot for grants
 
-Using administrative access, create the app's schema with that SQL role as its owner and set its default search path:
+Using administrative access, create the app's schema and grant its role access:
 
 ```sql
-CREATE SCHEMA app_name AUTHORIZATION app_sql_role;
+CREATE SCHEMA app_name;
+GRANT USAGE, CREATE ON SCHEMA app_name TO app_sql_role;
+```
+
+Connect as the app role and set its default schema:
+
+```sql
 ALTER ROLE app_sql_role IN DATABASE postgres SET search_path TO app_name;
 ```
 
 The role owns the tables it creates and can apply later migrations to them. Keep migration history in the same schema. Do not grant `pg_read_all_data`, `pg_write_all_data`, or `CREATE` on `public`. If moving existing tables, preserve their ownership, associated sequences, and migration history
+
+PlanetScale's MCP admin connection cannot alter tables owned by an app role. Move those tables using the existing app credentials after granting access to the destination schema
 
 Configure Ecto queries and release migrations with the app's schema prefix, following `Cafe.Repo`, `Cafe.Release`, and `config/runtime.exs`. The role's search path covers raw SQL too. Set it on the role rather than as a client startup parameter, which the pooled endpoint rejects
 
