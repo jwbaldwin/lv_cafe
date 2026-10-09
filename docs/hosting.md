@@ -8,7 +8,9 @@ The Kamal service and image are `vibes` and `ghcr.io/jwbaldwin/vibes`. The inter
 
 Database: PlanetScale `weirdbit/arda`, Postgres 18, PS-5 single node in us-east-1, $5/month base price. Storage is capped at the included 10 GB. The SQL database is `postgres`; Vibes owns the `vibes` schema within it. Other small apps get their own schemas and roles in the same cluster. App traffic uses included PgBouncer on 6432 with a five-connection Ecto pool. Schema changes run from the exact release image in CI through the direct endpoint on 5432 with verified TLS.
 
-The single `vibes_app` role has `USAGE, CREATE` on the `vibes` schema and owns its tables, including `schema_migrations`. The schema itself belongs to the administrative `postgres` role. The app role handles both app queries and migrations, without database-wide read/write roles or permission to create tables in `public`. Its database-level `search_path` is `vibes`, so raw SQL in existing migrations resolves correctly. Ecto also explicitly targets `vibes` through the production repo's `default_prefix` for queries and release migrations. Local development and tests retain their separate databases and default schema.
+The single active `vibes` role has `USAGE, CREATE` on the `vibes` schema and owns its tables, including `schema_migrations`. The schema itself belongs to the administrative `postgres` role. The app role handles both app queries and migrations, without database-wide read/write roles or permission to create tables in `public`. Its database-level `search_path` is `vibes`, so raw SQL in existing migrations resolves correctly. Ecto also explicitly targets `vibes` through the production repo's `default_prefix` for queries and release migrations. Local development and tests retain their separate databases and default schema.
+
+The former `vibes_app` role is retained unused. Its original provider-managed read/write grants could not be removed through SQL, so the replacement role was created without inherited permissions. Its objects were transferred using `pscale role reassign`. The old credentials remain in the `UNUSED_DATABASE_URL` and `UNUSED_DIRECT_DATABASE_URL` fields of the 1Password item; GitHub production secrets contain only the new role's URLs.
 
 The PlanetScale rename does not change the SQL database name or credentials. Keep `/postgres` in both connection URLs. Do not send `search_path` as a startup parameter to PgBouncer: this endpoint rejects it.
 
@@ -79,7 +81,7 @@ No data export/import was needed. Existing migrations built the schema; a fresh 
 
 ## Credential records
 
-1Password Private: `Vibes Production` and `Vibes GitHub Actions SSH`. The former admin login and production secure note are consolidated into the `Vibes Production` login item; the duplicate secure note is archived. The login password is `ADMIN_PASSWORD`, and admin autofill remains available. The database uses one `vibes_app` role for runtime and migrations
+1Password Private: `Vibes Production` and `Vibes GitHub Actions SSH`. The former admin login and production secure note are consolidated into the `Vibes Production` login item; the duplicate secure note is archived. The login password is `ADMIN_PASSWORD`, and admin autofill remains available. The database uses one `vibes` role for runtime and migrations
 
 See [Deploy another app](deploy-another-app.md) for the repeatable procedure and migration-specific lessons
 
