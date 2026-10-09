@@ -47,7 +47,7 @@ defmodule CafeWeb.StationPicker do
         phx-click={hide_picker()}
         class="fixed inset-0 hidden overflow-y-auto bg-black/80"
       >
-        <div class="flex min-h-full flex-col items-center px-4 py-16 transition-transform duration-200 ease-out-quint sm:px-8 sm:py-20">
+        <div class="flex flex-col items-center px-4 py-16 transition-transform duration-200 ease-out-quint sm:px-8 sm:py-20">
           <h2 class="pb-4 text-base text-white text-shadow-green">
             pick a station
           </h2>
