@@ -116,7 +116,7 @@ jobs:
         env:
           # The local disposable service has no trusted certificate; production
           # migrations use the verified-TLS DIRECT_DATABASE_URL secret below.
-          DIRECT_DATABASE_URL: ecto://postgres:postgres@127.0.0.1:5432/cafe?ssl=false
+          DIRECT_DATABASE_URL: ecto://vibes_app:disposable@127.0.0.1:5432/cafe?ssl=false
           SECRET_KEY_BASE: release-migration-check-only
         run: |
           set -euo pipefail
@@ -143,13 +143,21 @@ jobs:
               psql --host=127.0.0.1 --username=postgres "$@"
           }
 
+          postgres --dbname=cafe -v ON_ERROR_STOP=1 <<'SQL'
+          CREATE ROLE vibes_app LOGIN PASSWORD 'disposable';
+          CREATE SCHEMA vibes AUTHORIZATION vibes_app;
+          ALTER ROLE vibes_app IN DATABASE cafe SET search_path TO vibes;
+          SQL
           docker pull "$image"
           docker run --rm --network host --env-file "$migration_env" "$image" /app/bin/migrate
           docker run --rm --network host --env-file "$migration_env" "$image" /app/bin/migrate
           docker run --rm --network host --env-file "$migration_env" "$image" /app/bin/cafe eval Cafe.Release.seed
           docker run --rm --network host --env-file "$migration_env" "$image" /app/bin/cafe eval Cafe.Release.seed
-          test "$(postgres --dbname=cafe -tAc 'SELECT COUNT(*) FROM schema_migrations')" -gt 0
-          test "$(postgres --dbname=cafe -tAc 'SELECT COUNT(*) FROM stations')" -gt 0
+          docker run --rm --network host --env-file "$migration_env" "$image" /app/bin/cafe eval \
+            'Application.load(:cafe); Ecto.Migrator.with_repo(Cafe.Repo, fn _ -> [_ | _] = Cafe.Stations.list_stations() end)'
+          test "$(postgres --dbname=cafe -tAc 'SELECT COUNT(*) FROM vibes.schema_migrations')" -gt 0
+          test "$(postgres --dbname=cafe -tAc 'SELECT COUNT(*) FROM vibes.stations')" -gt 0
+          test "$(postgres --dbname=cafe -tAc "SELECT COUNT(*) FROM pg_tables WHERE schemaname = 'public'")" -eq 0
 
   memory-benchmark:
     name: Measure isolated candidate on Hetzner

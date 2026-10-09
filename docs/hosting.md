@@ -6,7 +6,11 @@ Vibes runs as a Docker container on the existing Ubuntu 24.04 Hetzner server, ma
 
 The Kamal service and image are `vibes` and `ghcr.io/jwbaldwin/vibes`. The internal Elixir release remains `cafe`. Port 4000 is reachable inside the Docker network, with no published app port. Kamal proxy routes each domain to its own app, allowing other Kamal services on this server without allocating separate host ports.
 
-Database: PlanetScale `weirdbit/vibes`, Postgres 18, PS-5 single node in us-east-1, $5/month base price. Storage is capped at the included 10 GB. App traffic uses included PgBouncer on 6432 with a five-connection Ecto pool. Schema changes run from the exact release image in CI through the direct endpoint on 5432 with verified TLS.
+Database: PlanetScale `weirdbit/arda`, Postgres 18, PS-5 single node in us-east-1, $5/month base price. Storage is capped at the included 10 GB. The SQL database is `postgres`; Vibes owns the `vibes` schema within it. Other small apps get their own schemas and roles in the same cluster. App traffic uses included PgBouncer on 6432 with a five-connection Ecto pool. Schema changes run from the exact release image in CI through the direct endpoint on 5432 with verified TLS.
+
+The single `vibes_app` role owns the schema and its tables, including `schema_migrations`. It handles both app queries and migrations, without database-wide read/write roles or permission to create tables in `public`. Its database-level `search_path` is `vibes`, so raw SQL in existing migrations resolves correctly. Ecto also explicitly targets `vibes` through the production repo's `default_prefix` for queries and release migrations. Local development and tests retain their separate databases and default schema.
+
+The PlanetScale rename does not change the SQL database name or credentials. Keep `/postgres` in both connection URLs. Do not send `search_path` as a startup parameter to PgBouncer: this endpoint rejects it.
 
 ## GitHub production environment
 
@@ -39,7 +43,7 @@ Schema changes run before app deployment so the readiness check can query the ne
 
 The deploy job logs in to GHCR, pulls `ghcr.io/jwbaldwin/vibes:${GITHUB_SHA}`, and runs `/app/bin/migrate` from that image before invoking Kamal. The migration receives `DIRECT_DATABASE_URL` and `SECRET_KEY_BASE` through a mode-0600 temporary environment file on the GitHub runner. The file is removed and the runner logs out of GHCR when the step exits; Docker's `--rm` removes the one-off container. The direct URL is never put in a command argument or the Kamal configuration, and the runtime app continues to receive only the PgBouncer `DATABASE_URL`.
 
-Non-pull-request workflows also run that exact image twice against a disposable Postgres service before production deployment: the first pass exercises a fresh schema and the second pass exercises an already migrated schema. That check uses test-only credentials and does not load the production environment.
+Non-pull-request workflows also run that exact image twice against a disposable Postgres service before production deployment: the first pass exercises a fresh schema and the second pass exercises an already migrated schema. The test role owns only `vibes`; the check also seeds twice, reads the catalog through the app, and confirms `public` has no tables. That check uses test-only credentials and does not load the production environment.
 
 For a fresh disposable database or a new installation, load the catalog only after migrations with `/app/bin/cafe eval Cafe.Release.seed`. Seeds are separate from schema migrations, are safe to rerun, and do not run as part of a production deploy against an existing catalog.
 

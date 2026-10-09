@@ -20,11 +20,20 @@ For Vibes, Fly had two app machines with automatic suspend/start, a separate unm
 
 Use the official CLI, verify its download checksum, then authenticate with `pscale auth login`. Use `--format json` in automation and keep secret-bearing command output in restricted files or process memory
 
-Create a Postgres single-node PS-5 database near the app, with the included PgBouncer. The base price was $5/month during this migration. Verify current pricing before creating another database. Cap storage at the included size if automatic growth charges are unwanted
+For small projects, reuse PlanetScale `weirdbit/arda` with a separate schema and role per app. The SQL database name is `postgres`. The apps share compute, storage, connections, and database-level recovery. Create a separate cluster only when an app needs that separation
 
-Create an app role inheriting `pg_read_all_data,pg_write_all_data`. PlanetScale's display name is not the SQL role identifier: get the `username` from the creation response and use the part before the dot for grants
+Create one app role with no inherited database-wide permissions. Use it for both runtime queries and migrations. PlanetScale's display name is not the SQL role identifier: get the `username` from the creation response and use the part before the dot for grants
 
-Grant that SQL role `USAGE, CREATE` on the app's schema. The role will own tables it creates and can apply later migrations to those tables. PlanetScale's `pscale sql --role admin` can apply this setup grant using ephemeral credentials; there is no need to keep a permanent setup/admin role
+Using administrative access, create the app's schema with that SQL role as its owner and set its default search path:
+
+```sql
+CREATE SCHEMA app_name AUTHORIZATION app_sql_role;
+ALTER ROLE app_sql_role IN DATABASE postgres SET search_path TO app_name;
+```
+
+The role owns the tables it creates and can apply later migrations to them. Keep migration history in the same schema. Do not grant `pg_read_all_data`, `pg_write_all_data`, or `CREATE` on `public`. If moving existing tables, preserve their ownership, associated sequences, and migration history
+
+Configure Ecto queries and release migrations with the app's schema prefix, following `Cafe.Repo`, `Cafe.Release`, and `config/runtime.exs`. The role's search path covers raw SQL too. Set it on the role rather than as a client startup parameter, which the pooled endpoint rejects
 
 Use two connection URLs with the same username/password:
 

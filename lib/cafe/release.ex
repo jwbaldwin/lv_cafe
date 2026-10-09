@@ -9,7 +9,10 @@ defmodule Cafe.Release do
     load_app()
 
     Enum.each(repos(), fn repo ->
-      {:ok, _, _} = Ecto.Migrator.with_repo(repo, &Ecto.Migrator.run(&1, :up, all: true))
+      {:ok, _, _} =
+        Ecto.Migrator.with_repo(repo, fn repo ->
+          Ecto.Migrator.run(repo, :up, all: true, prefix: repo.config()[:default_prefix])
+        end)
     end)
   end
 
@@ -27,7 +30,11 @@ defmodule Cafe.Release do
 
   def rollback(repo, version) do
     load_app()
-    {:ok, _, _} = Ecto.Migrator.with_repo(repo, &Ecto.Migrator.run(&1, :down, to: version))
+
+    {:ok, _, _} =
+      Ecto.Migrator.with_repo(repo, fn repo ->
+        Ecto.Migrator.run(repo, :down, to: version, prefix: repo.config()[:default_prefix])
+      end)
   end
 
   defp repos do

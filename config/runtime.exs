@@ -35,6 +35,7 @@ if config_env() == :prod do
   config :cafe, Cafe.Repo,
     ssl: [verify: :verify_peer, cacerts: :public_key.cacerts_get()],
     url: database_url,
+    default_prefix: "vibes",
     pool_size: String.to_integer(System.get_env("POOL_SIZE") || "10"),
     socket_options: maybe_ipv6
 
